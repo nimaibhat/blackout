@@ -71,6 +71,41 @@ reviews:
     unit_tests:
       enabled: true
 
+  tools:
+    ast-grep:
+      enabled: true
+    shellcheck:
+      enabled: true
+    markdownlint:
+      enabled: true
+    biome:
+      enabled: true
+    hadolint:
+      enabled: true
+    yamllint:
+      enabled: true
+    eslint:
+      enabled: true
+    oxc:
+      enabled: true
+    gitleaks:
+      enabled: true
+    checkov:
+      enabled: true
+    semgrep:
+      enabled: true
+    actionlint:
+      enabled: true
+    htmlhint:
+      enabled: true
+    github-checks:
+      enabled: true
+      timeout_ms: 120000
+    languagetool:
+      enabled: true
+    dotenvLint:
+      enabled: true
+
   pre_merge_checks:
     title:
       mode: "warning"
@@ -122,37 +157,3 @@ issue_enrichment:
   labeling:
     auto_apply_labels: true
 
-tools:
-  ast-grep:
-    enabled: true
-  shellcheck:
-    enabled: true
-  markdownlint:
-    enabled: true
-  biome:
-    enabled: true
-  hadolint:
-    enabled: true
-  yamllint:
-    enabled: true
-  eslint:
-    enabled: true
-  oxc:
-    enabled: true
-  gitleaks:
-    enabled: true
-  checkov:
-    enabled: true
-  semgrep:
-    enabled: true
-  actionlint:
-    enabled: true
-  htmlhint:
-    enabled: true
-  github-checks:
-    enabled: true
-    timeout_ms: 120000
-  languagetool:
-    enabled: true
-  dotenvLint:
-    enabled: true
