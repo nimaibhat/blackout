@@ -9,6 +9,7 @@ import EnhancedSmartDevicesPanel from "@/components/EnhancedSmartDevicesPanel";
 import XRPLWalletPanel from "@/components/XRPLWalletPanel";
 import { supabase } from "@/lib/supabase";
 import { useRealtimeAlerts, type LiveAlert } from "@/hooks/useRealtimeAlerts";
+import { useRealtimeSession } from "@/hooks/useRealtimeSession";
 import { fetchRecommendations, type HourlyPrice, type ConsumerRecommendation } from "@/lib/api";
 
 /* ------------------------------------------------------------------ */
@@ -49,13 +50,16 @@ interface DashboardProfile {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Default profile                                                    */
+/*  Default Martinez profile UUID (first row in Supabase)              */
 /* ------------------------------------------------------------------ */
-const DEFAULT_PROFILE: DashboardProfile = {
-  name: "Martinez Family",
-  location: "Austin, TX",
-  zip: "78701",
+const DEFAULT_PROFILE_ID = "e2bfe115-5417-4d25-bac6-d5e299d8c6f5";
+
+const EMPTY_PROFILE: DashboardProfile = {
+  name: "",
+  location: "",
+  zip: "",
   gridRegion: "ERCOT",
+<<<<<<< HEAD
   homeType: "Single Family",
   sqft: 2400,
   devices: [
@@ -74,6 +78,17 @@ const DEFAULT_PROFILE: DashboardProfile = {
   estSavings: 14.2,
   enodeUserId: null,
   profileId: null,
+=======
+  homeType: "",
+  sqft: 0,
+  devices: [],
+  threats: [],
+  readinessScore: 0,
+  status: "MONITORING",
+  nextRiskWindow: "",
+  smartActions: 0,
+  estSavings: 0,
+>>>>>>> ae9a8ffacf72504130faac7aac629eb6d7d856c4
 };
 
 /* ------------------------------------------------------------------ */
@@ -636,10 +651,10 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const searchParams = useSearchParams();
-  const profileId = searchParams.get("id");
+  const profileId = searchParams.get("id") || DEFAULT_PROFILE_ID;
 
-  const [profile, setProfile] = useState<DashboardProfile>(DEFAULT_PROFILE);
-  const [loading, setLoading] = useState(!!profileId);
+  const [profile, setProfile] = useState<DashboardProfile>(EMPTY_PROFILE);
+  const [loading, setLoading] = useState(true);
   const [priceData, setPriceData] = useState<HourlyPrice[]>([]);
   const [priceLoading, setPriceLoading] = useState(true);
   const [alerts, setAlerts] = useState<AlertData[]>([]);
@@ -656,6 +671,7 @@ function DashboardContent() {
   // Realtime live alerts from orchestrated simulations
   const { liveAlerts } = useRealtimeAlerts(profile.gridRegion);
 
+<<<<<<< HEAD
   // Derive householdId from profile name
   const deriveHouseholdId = (name: string): string | null => {
     const lower = name.toLowerCase();
@@ -666,8 +682,14 @@ function DashboardContent() {
   };
 
   // Fetch profile from Supabase
+=======
+  // Realtime session — when operator runs a sim, switch scenario
+  const { session: liveSession } = useRealtimeSession();
+  const scenario = liveSession?.scenario ?? "live";
+
+  // Fetch profile from Supabase (always — no hardcoded fallback)
+>>>>>>> ae9a8ffacf72504130faac7aac629eb6d7d856c4
   useEffect(() => {
-    if (!profileId) return;
     setLoading(true);
     supabase
       .from("consumer_profiles")
@@ -687,13 +709,12 @@ function DashboardContent() {
       });
   }, [profileId]);
 
-  // Fetch backend recommendations after profile loads
+  // Fetch backend recommendations — re-runs when scenario changes (live → sim)
   useEffect(() => {
-    const id = profileId || "martinez-family";
-    fetchRecommendations(id, profile.gridRegion)
+    if (loading) return;
+    fetchRecommendations(profileId, profile.gridRegion, scenario)
       .then((rec) => {
         setRecommendation(rec);
-        // Override profile fields with backend-computed values
         setProfile((prev) => ({
           ...prev,
           readinessScore: rec.readiness_score ?? prev.readinessScore,
@@ -707,14 +728,12 @@ function DashboardContent() {
         }));
       })
       .catch((err) => console.error("Failed to fetch recommendations:", err));
-  }, [profileId, profile.gridRegion]);
+  }, [profileId, profile.gridRegion, scenario, loading]);
 
-  // Fetch price forecast + smart alerts
+  // Fetch price forecast + smart alerts — re-runs when scenario changes
   useEffect(() => {
     setPriceLoading(true);
-    const alertUrl = profileId
-      ? `/api/alerts?profileId=${profileId}`
-      : `/api/alerts`;
+    const alertUrl = `/api/alerts?profileId=${profileId}&scenario=${scenario}`;
 
     fetch(alertUrl)
       .then((r) => r.json())
@@ -726,7 +745,7 @@ function DashboardContent() {
       })
       .catch((err) => console.error("Failed to fetch alerts:", err))
       .finally(() => setPriceLoading(false));
-  }, [profileId]);
+  }, [profileId, scenario]);
 
   // Handle alert accept action
   const handleAlertAction = useCallback(
@@ -747,6 +766,13 @@ function DashboardContent() {
                 : a
             )
           );
+          // Update savings with the amount added
+          if (data.savings > 0) {
+            setProfile((prev) => ({
+              ...prev,
+              estSavings: Math.round((prev.estSavings + data.savings) * 100) / 100,
+            }));
+          }
         }
       } catch (err) {
         console.error("Failed to accept alert:", err);
@@ -944,11 +970,7 @@ function DashboardContent() {
         {/* ---------------------------------------------------------- */}
         <div className="grid grid-cols-1 gap-6">
           <AlertsPanel
-            alerts={
-              liveAlerts.length > 0 || alerts.length > 0
-                ? [...liveAlerts.map(mapLiveAlert), ...alerts]
-                : undefined
-            }
+            alerts={[...liveAlerts.map(mapLiveAlert), ...alerts]}
             onAction={handleAlertAction}
           />
         </div>

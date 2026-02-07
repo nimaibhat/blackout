@@ -220,7 +220,7 @@ export default function OperatorGlobe({
 
       const map = new mb.Map({
         container: containerRef.current!,
-        style: "mapbox://styles/mapbox/satellite-streets-v12",
+        style: "mapbox://styles/mapbox/dark-v11",
         center: INITIAL_CENTER,
         zoom: INITIAL_ZOOM,
         projection: "globe",
