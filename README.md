@@ -1,5 +1,22 @@
 # void
 
+void is a full-stack grid intelligence platform that forecasts electricity prices, simulates cascade failures across the Texas power grid, dispatches repair crews, and gives consumers real-time alerts to shift their energy usage. It combines a 2,173-node synthetic grid model with historical ERCOT load data, live weather from Open-Meteo, and an XGBoost price prediction model trained on 43,818 hourly records.
+
+Built for the scenario where Winter Storm Uri hits again and the grid needs to respond in real time.
+
+## Table of Contents
+
+- [Hackathon Tracks](#hackathon-tracks)
+- [Architecture](#architecture)
+- [Pages](#pages)
+- [Tech Stack](#tech-stack)
+- [External APIs and Data Sources](#external-apis-and-data-sources)
+- [ML Models](#ml-models)
+- [Database Schema](#database-schema)
+- [Setup](#setup)
+- [Environment Variables](#environment-variables)
+- [API Reference](#api-reference)
+
 ## Hackathon Tracks
 
 ### Best Financial Hack (Capital One)
@@ -10,24 +27,6 @@ In the CodeRabbit tech talk we learned that you could customize the tone of code
 
 ### Best Use of XRPL (Build an MVP that leverages the XRP Ledger's core features)
 When a consumer follows a price alert and shifts their energy usage, the savings are real but small, often a few dollars. void uses the XRP Ledger to pay those savings out as RLUSD stablecoin directly to the household's wallet. The system creates Testnet wallets, sets up RLUSD trustlines, and sends micropayouts automatically when accumulated savings cross a threshold. XRPL's near-zero transaction fees make sub-dollar energy rebates actually viable, which is something traditional payment rails can't do without eating the entire payout in processing fees.
-
----
-
-void is a full-stack grid intelligence platform that forecasts electricity prices, simulates cascade failures across the Texas power grid, dispatches repair crews, and gives consumers real-time alerts to shift their energy usage. It combines a 2,173-node synthetic grid model with historical ERCOT load data, live weather from Open-Meteo, and an XGBoost price prediction model trained on 43,818 hourly records.
-
-Built for the scenario where Winter Storm Uri hits again and the grid needs to respond in real time.
-
-## Table of Contents
-
-- [Architecture](#architecture)
-- [Pages](#pages)
-- [Tech Stack](#tech-stack)
-- [External APIs and Data Sources](#external-apis-and-data-sources)
-- [ML Models](#ml-models)
-- [Database Schema](#database-schema)
-- [Setup](#setup)
-- [Environment Variables](#environment-variables)
-- [API Reference](#api-reference)
 
 ## Architecture
 
@@ -113,9 +112,10 @@ Side integrations:
 - Sends JSON push notifications to consumer devices when price alerts trigger or simulation events occur.
 - No authentication required. Topic-based pub/sub.
 
-### Enode API (smart device control)
-- OAuth2 sandbox integration for linking consumer devices (EV chargers, HVAC, batteries, solar inverters).
+### Enode API (simulated smart device control)
+- OAuth2 sandbox integration for linking simulated consumer devices (EV chargers, HVAC, batteries, solar inverters).
 - Supports device listing, status polling, and control actions (shift charging, HVAC mode changes).
+- void acts on the user's behalf, automatically adjusting devices based on price forecasts so savings are hands-off.
 
 ### XRPL Testnet (blockchain rewards)
 - Creates RLUSD wallets and trustlines for consumer households.
@@ -197,7 +197,7 @@ Create a `.env` file in the project root:
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
 SUPABASE_ANON_KEY=eyJhbGci...
 
 # Anthropic
@@ -205,6 +205,18 @@ ANTHROPIC_API_KEY=sk-ant-api03-...
 
 # Mapbox (optional, for map features)
 NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1...
+
+# Enode (smart device control)
+ENODE_CLIENT_ID=your-enode-client-id
+ENODE_CLIENT_SECRET=your-enode-client-secret
+ENODE_API_URL=https://enode-api.sandbox.enode.io/
+ENODE_OAUTH_URL=https://oauth.sandbox.enode.io/oauth2/token
+ENODE_REDIRECT_URI=http://localhost:3000/devices?linked=true
+
+# XRPL (blockchain rewards)
+XRPL_RPC_URL=wss://testnet.xrpl-labs.com
+XRPL_SEED=sEd7...
+XRPL_ISSUER=raoo...
 ```
 
 ### 3. Install and run the frontend
@@ -250,10 +262,18 @@ This pulls all ERCOT load data and matching weather from Open-Meteo, trains the 
 |---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Frontend | Yes | Supabase project URL |
 | `SUPABASE_URL` | Backend | Yes | Supabase project URL (same value) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | Frontend | Yes | Supabase publishable key for client-side access |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Frontend | Yes | Supabase anon key for client-side access |
 | `SUPABASE_ANON_KEY` | Backend | Yes | Supabase anon JWT for REST API access |
 | `ANTHROPIC_API_KEY` | Both | Yes | Claude API key for alert enhancement and weather events |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | Frontend | No | Mapbox token for map rendering |
+| `ENODE_CLIENT_ID` | Frontend | Yes | Enode client ID for smart device OAuth sandbox |
+| `ENODE_CLIENT_SECRET` | Frontend | Yes | Enode client secret |
+| `ENODE_API_URL` | Frontend | No | Enode API base URL (defaults to sandbox) |
+| `ENODE_OAUTH_URL` | Frontend | No | Enode OAuth token URL (defaults to sandbox) |
+| `ENODE_REDIRECT_URI` | Frontend | No | Redirect URI after device linking |
+| `XRPL_RPC_URL` | Frontend | Yes | XRPL WebSocket RPC endpoint (testnet) |
+| `XRPL_SEED` | Frontend | Yes | XRPL wallet seed for sending RLUSD payouts |
+| `XRPL_ISSUER` | Frontend | Yes | RLUSD issuer address on XRPL |
 
 ## API Reference
 
