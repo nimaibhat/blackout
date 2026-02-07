@@ -755,7 +755,7 @@ export default function Home() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleProfileSelect = (profile: ConsumerProfile) => {
-    router.push(`/dashboard?zip=${encodeURIComponent(profile.zip)}&name=${encodeURIComponent(profile.name)}`);
+    router.push(`/dashboard?id=${profile.id}`);
   };
 
   return (
