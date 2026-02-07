@@ -271,20 +271,27 @@ class GridGraphService:
                 grid_zone=n["grid_zone"],
                 source=n.get("source", "activsg2000"),
             )
+        node_ids = set(g.nodes)
+        skipped = 0
         for e in data["edges"]:
-            g.add_edge(
-                e["from_bus"],
-                e["to_bus"],
-                capacity_mva=e["capacity_mva"],
-                impedance=e["impedance"],
-            )
+            if e["from_bus"] in node_ids and e["to_bus"] in node_ids:
+                g.add_edge(
+                    e["from_bus"],
+                    e["to_bus"],
+                    capacity_mva=e["capacity_mva"],
+                    impedance=e["impedance"],
+                )
+            else:
+                skipped += 1
+        if skipped:
+            logger.warning("Skipped %d edges with missing endpoint nodes", skipped)
         self.graph = g
 
     def _build_zone_index(self) -> None:
         """Build weather_zone → [node_ids] lookup."""
         self._zone_index = {}
         for nid in self.graph.nodes:
-            wz = self.graph.nodes[nid]["weather_zone"]
+            wz = self.graph.nodes[nid].get("weather_zone", "South Central")
             self._zone_index.setdefault(wz, []).append(nid)
 
     # ── Accessors ────────────────────────────────────────────────────

@@ -32,7 +32,10 @@ async def run_cascade_simulation(
         ISO region (currently only ERCOT has real grid data).
     """
     # Determine scenario from start_time
-    scenario = "uri" if "2021-02" in start_time_str else "normal"
+    if start_time_str == "live":
+        scenario = "live"
+    else:
+        scenario = "uri" if "2021-02" in start_time_str else "normal"
 
     # Compute demand multipliers from real ERCOT data
     multipliers = demand_service.compute_demand_multipliers(

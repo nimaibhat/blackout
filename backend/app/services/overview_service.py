@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -12,7 +13,10 @@ from app.models.utility import (
     WeatherThreat,
 )
 from app.services import demand_service
+from app.services.demand_service import _fetch_zone_weather
 from app.services.grid_graph_service import grid_graph
+
+logger = logging.getLogger("blackout.overview_service")
 
 # ── Weather zone display names ──────────────────────────────────────
 
@@ -51,6 +55,48 @@ _NORMAL_WEATHER: Dict[str, dict] = {
 }
 
 
+def _build_live_weather() -> Dict[str, dict]:
+    """Fetch current-hour weather from Open-Meteo and map to the overview format."""
+    try:
+        zone_weather = _fetch_zone_weather(forecast_hours=1)
+    except Exception as exc:
+        logger.error("Failed to fetch live weather, falling back to normal: %s", exc)
+        return dict(_NORMAL_WEATHER)
+
+    result: Dict[str, dict] = {}
+    for zone_name, records in zone_weather.items():
+        if not records:
+            result[zone_name] = _NORMAL_WEATHER.get(zone_name, _NORMAL_WEATHER["Coast"])
+            continue
+        r = records[0]
+        temp_f = r.get("temperature_f", 70.0)
+        wind_mph = r.get("wind_speed_mph", 10.0)
+
+        # Derive condition from temperature + wind
+        if temp_f <= 20:
+            condition = "Freezing"
+        elif temp_f <= 32:
+            condition = "Near freezing"
+        elif temp_f >= 100:
+            condition = "Extreme heat"
+        elif wind_mph >= 30:
+            condition = "High winds"
+        elif wind_mph >= 20:
+            condition = "Windy"
+        else:
+            condition = "Clear"
+
+        is_extreme = temp_f <= 20 or temp_f >= 100 or wind_mph >= 30
+
+        result[zone_name] = {
+            "temp_f": round(temp_f, 1),
+            "wind_mph": round(wind_mph, 1),
+            "condition": condition,
+            "is_extreme": is_extreme,
+        }
+    return result
+
+
 def _status_from_utilization(pct: float) -> RegionStatus:
     if pct >= 95:
         return RegionStatus.BLACKOUT
@@ -71,10 +117,20 @@ _STATUS_RANK = {
 
 def get_overview(scenario: str = "uri") -> NationalOverview:
     """Build national overview aggregated from grid nodes by ERCOT weather zone."""
-    forecast_hour = 36 if scenario == "uri" else 12
+    if scenario == "uri":
+        forecast_hour = 36
+    elif scenario == "live":
+        forecast_hour = 0
+    else:
+        forecast_hour = 12
     multipliers = demand_service.compute_demand_multipliers(scenario, forecast_hour)
 
-    weather_data = _URI_WEATHER if scenario == "uri" else _NORMAL_WEATHER
+    if scenario == "uri":
+        weather_data = _URI_WEATHER
+    elif scenario == "live":
+        weather_data = _build_live_weather()
+    else:
+        weather_data = _NORMAL_WEATHER
 
     # Aggregate nodes by weather zone
     zone_loads: Dict[str, float] = {z: 0.0 for z in _ZONES}

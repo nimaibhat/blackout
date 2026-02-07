@@ -18,6 +18,14 @@ const SCENARIOS = [
     icon: "🔴",
   },
   {
+    id: "live",
+    label: "live ai forecast",
+    desc: "real-time open-meteo weather → ml demand model → cascade probability",
+    badge: "AI",
+    badgeColor: "text-[#3b82f6]/70",
+    icon: "🔵",
+  },
+  {
     id: "normal",
     label: "normal operations",
     desc: "baseline feb 2021 conditions — typical winter load",
