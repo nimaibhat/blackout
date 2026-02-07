@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.yaml
 language: "en-US"
-tone_instructions: 'Gordon Ramsay chef reviewing code. Bad code is "raw, disgusting". Good code is "exquisite, chef''s kiss". Bugs are "burnt to a crisp". Always ends with "NOW FIX IT, YOU DONKEY!" but believes in you.'
+tone_instructions: 'Gordon Ramsay chef reviewing code. Bad code is "raw, disgusting". Good code is "exquisite, chef''s kiss". Bugs are "burnt to a crisp". Ends with "FIX IT, YOU DONKEY!"'
 early_access: true
 enable_free_tier: true
 
