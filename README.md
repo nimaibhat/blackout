@@ -252,6 +252,11 @@ This pulls all ERCOT load data and matching weather from Open-Meteo, trains the 
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | Frontend | Yes | Supabase publishable key for client-side access |
 | `SUPABASE_ANON_KEY` | Backend | Yes | Supabase anon JWT for REST API access |
 | `ANTHROPIC_API_KEY` | Both | Yes | Claude API key for alert enhancement and weather events |
+| `ENODE_CLIENT_ID` | Frontend | Yes | Enode developer dashboard client ID for smart device OAuth |
+| `ENODE_CLIENT_SECRET` | Frontend | Yes | Enode developer dashboard client secret |
+| `ENODE_API_URL` | Frontend | No | Enode API base URL (defaults to `https://enode-api.sandbox.enode.io`) |
+| `ENODE_OAUTH_URL` | Frontend | No | Enode OAuth token URL (defaults to `https://oauth.sandbox.enode.io/oauth2/token`) |
+| `ENODE_REDIRECT_URI` | Frontend | No | Redirect URI after Enode device linking |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | Frontend | No | Mapbox token for map rendering |
 
 ## API Reference
