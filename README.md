@@ -112,9 +112,10 @@ Side integrations:
 - Sends JSON push notifications to consumer devices when price alerts trigger or simulation events occur.
 - No authentication required. Topic-based pub/sub.
 
-### Enode API (smart device control)
-- OAuth2 sandbox integration for linking consumer devices (EV chargers, HVAC, batteries, solar inverters).
+### Enode API (simulated smart device control)
+- OAuth2 sandbox integration for linking simulated consumer devices (EV chargers, HVAC, batteries, solar inverters).
 - Supports device listing, status polling, and control actions (shift charging, HVAC mode changes).
+- void acts on the user's behalf, automatically adjusting devices based on price forecasts so savings are hands-off.
 
 ### XRPL Testnet (blockchain rewards)
 - Creates RLUSD wallets and trustlines for consumer households.
@@ -196,7 +197,7 @@ Create a `.env` file in the project root:
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
 SUPABASE_ANON_KEY=eyJhbGci...
 
 # Anthropic
@@ -204,6 +205,18 @@ ANTHROPIC_API_KEY=sk-ant-api03-...
 
 # Mapbox (optional, for map features)
 NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1...
+
+# Enode (smart device control)
+ENODE_CLIENT_ID=your-enode-client-id
+ENODE_CLIENT_SECRET=your-enode-client-secret
+ENODE_API_URL=https://enode-api.sandbox.enode.io/
+ENODE_OAUTH_URL=https://oauth.sandbox.enode.io/oauth2/token
+ENODE_REDIRECT_URI=http://localhost:3000/devices?linked=true
+
+# XRPL (blockchain rewards)
+XRPL_RPC_URL=wss://testnet.xrpl-labs.com
+XRPL_SEED=sEd7...
+XRPL_ISSUER=raoo...
 ```
 
 ### 3. Install and run the frontend
@@ -249,15 +262,18 @@ This pulls all ERCOT load data and matching weather from Open-Meteo, trains the 
 |---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Frontend | Yes | Supabase project URL |
 | `SUPABASE_URL` | Backend | Yes | Supabase project URL (same value) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | Frontend | Yes | Supabase publishable key for client-side access |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Frontend | Yes | Supabase anon key for client-side access |
 | `SUPABASE_ANON_KEY` | Backend | Yes | Supabase anon JWT for REST API access |
 | `ANTHROPIC_API_KEY` | Both | Yes | Claude API key for alert enhancement and weather events |
-| `ENODE_CLIENT_ID` | Frontend | Yes | Enode developer dashboard client ID for smart device OAuth |
-| `ENODE_CLIENT_SECRET` | Frontend | Yes | Enode developer dashboard client secret |
-| `ENODE_API_URL` | Frontend | No | Enode API base URL (defaults to `https://enode-api.sandbox.enode.io`) |
-| `ENODE_OAUTH_URL` | Frontend | No | Enode OAuth token URL (defaults to `https://oauth.sandbox.enode.io/oauth2/token`) |
-| `ENODE_REDIRECT_URI` | Frontend | No | Redirect URI after Enode device linking |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | Frontend | No | Mapbox token for map rendering |
+| `ENODE_CLIENT_ID` | Frontend | Yes | Enode client ID for smart device OAuth sandbox |
+| `ENODE_CLIENT_SECRET` | Frontend | Yes | Enode client secret |
+| `ENODE_API_URL` | Frontend | No | Enode API base URL (defaults to sandbox) |
+| `ENODE_OAUTH_URL` | Frontend | No | Enode OAuth token URL (defaults to sandbox) |
+| `ENODE_REDIRECT_URI` | Frontend | No | Redirect URI after device linking |
+| `XRPL_RPC_URL` | Frontend | Yes | XRPL WebSocket RPC endpoint (testnet) |
+| `XRPL_SEED` | Frontend | Yes | XRPL wallet seed for sending RLUSD payouts |
+| `XRPL_ISSUER` | Frontend | Yes | RLUSD issuer address on XRPL |
 
 ## API Reference
 
