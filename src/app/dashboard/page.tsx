@@ -59,7 +59,6 @@ const EMPTY_PROFILE: DashboardProfile = {
   location: "",
   zip: "",
   gridRegion: "ERCOT",
-<<<<<<< HEAD
   homeType: "Single Family",
   sqft: 2400,
   devices: [
@@ -78,17 +77,6 @@ const EMPTY_PROFILE: DashboardProfile = {
   estSavings: 14.2,
   enodeUserId: null,
   profileId: null,
-=======
-  homeType: "",
-  sqft: 0,
-  devices: [],
-  threats: [],
-  readinessScore: 0,
-  status: "MONITORING",
-  nextRiskWindow: "",
-  smartActions: 0,
-  estSavings: 0,
->>>>>>> ae9a8ffacf72504130faac7aac629eb6d7d856c4
 };
 
 /* ------------------------------------------------------------------ */
@@ -670,8 +658,6 @@ function DashboardContent() {
 
   // Realtime live alerts from orchestrated simulations
   const { liveAlerts } = useRealtimeAlerts(profile.gridRegion);
-
-<<<<<<< HEAD
   // Derive householdId from profile name
   const deriveHouseholdId = (name: string): string | null => {
     const lower = name.toLowerCase();
@@ -681,14 +667,11 @@ function DashboardContent() {
     return null;
   };
 
-  // Fetch profile from Supabase
-=======
   // Realtime session — when operator runs a sim, switch scenario
   const { session: liveSession } = useRealtimeSession();
   const scenario = liveSession?.scenario ?? "live";
 
   // Fetch profile from Supabase (always — no hardcoded fallback)
->>>>>>> ae9a8ffacf72504130faac7aac629eb6d7d856c4
   useEffect(() => {
     setLoading(true);
     supabase
@@ -949,8 +932,9 @@ function DashboardContent() {
             <PriceForecastChart prices={priceData} loading={priceLoading} />
           </div>
           <div className="lg:col-span-2">
+            {/* Only show Enode devices, no hardcoded devices */}
             <EnhancedSmartDevicesPanel
-              devices={profile.devices}
+              devices={[]}
               enodeUserId={enodeUserId}
               onEnodeUserIdChange={setEnodeUserId}
               profileId={profileId}
@@ -962,7 +946,7 @@ function DashboardContent() {
         {/*  ROW 3 — XRPL Rewards                                      */}
         {/* ---------------------------------------------------------- */}
         <div className="grid grid-cols-1 gap-6">
-          <XRPLWalletPanel householdId={householdId} />
+          <XRPLWalletPanel householdId={householdId} profileId={profileId} />
         </div>
 
         {/* ---------------------------------------------------------- */}
