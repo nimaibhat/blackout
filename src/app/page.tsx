@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   SiNvidia,
   SiPython,
@@ -25,6 +25,9 @@ const ParticleGlobe = dynamic(() => import("@/components/ParticleGlobe"), {
   ssr: false,
   loading: () => null,
 });
+
+import ConsumerProfileModal from "@/components/ConsumerProfileModal";
+import type { ConsumerProfile } from "@/components/ConsumerProfileModal";
 
 /* ------------------------------------------------------------------ */
 /*  Simple letter icon for brands with no react-icon                  */
@@ -329,7 +332,7 @@ function OperatorPanel() {
 
   return (
     <div
-      className="w-[290px] flex-shrink-0 pointer-events-auto self-center"
+      className="w-[340px] flex-shrink-0 pointer-events-auto self-center"
       style={{ height: "75vh", animation: "float-left 6s ease-in-out infinite" }}
     >
       <div className="relative bg-black/40 backdrop-blur-md border border-[#22c55e]/20 rounded-lg overflow-hidden transition-all duration-500 hover:border-[#22c55e]/40 hover:shadow-[0_0_30px_rgba(34,197,94,0.08)] h-full flex flex-col">
@@ -347,7 +350,7 @@ function OperatorPanel() {
         />
 
         {/* Terminal header */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] flex-shrink-0">
+        <div className="flex items-center gap-2 px-6 py-3 border-b border-white/[0.06] flex-shrink-0">
           <div className="flex gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#ff5f57]" />
             <span className="w-2 h-2 rounded-full bg-[#febc2e]" />
@@ -365,7 +368,7 @@ function OperatorPanel() {
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="p-3 space-y-3 flex-1 flex flex-col" style={{ animation: "flicker 8s ease-in-out infinite" }}>
+          <div className="px-6 py-5 space-y-3 flex-1 flex flex-col" style={{ animation: "flicker 8s ease-in-out infinite" }}>
 
             {/* Grid load chart */}
             <div className="flex-shrink-0">
@@ -518,14 +521,14 @@ const smartDevices = [
   { name: "Solar Inv.", status: "active", detail: "4.2 kW" },
 ];
 
-function CitizenPanel() {
+function CitizenPanel({ onEnter }: { onEnter?: () => void }) {
   const weekData = [45, 62, 38, 71, 55, 48, 60];
   const days = ["M", "T", "W", "T", "F", "S", "S"];
   const readinessScore = 94;
 
   return (
     <div
-      className="w-[290px] flex-shrink-0 pointer-events-auto self-center"
+      className="w-[340px] flex-shrink-0 pointer-events-auto self-center"
       style={{ height: "75vh", animation: "float-right 6s ease-in-out infinite" }}
     >
       <div className="relative bg-black/40 backdrop-blur-md border border-[#22c55e]/20 rounded-lg overflow-hidden transition-all duration-500 hover:border-[#22c55e]/40 hover:shadow-[0_0_30px_rgba(34,197,94,0.08)] h-full flex flex-col">
@@ -543,7 +546,7 @@ function CitizenPanel() {
         />
 
         {/* Header */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] flex-shrink-0">
+        <div className="flex items-center gap-2 px-6 py-3 border-b border-white/[0.06] flex-shrink-0">
           <span className="text-[11px] font-mono text-white/50">your home</span>
           <span className="text-[10px] font-mono text-white/20">·</span>
           <span className="text-[10px] font-mono text-white/30">78701</span>
@@ -557,7 +560,7 @@ function CitizenPanel() {
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="p-3 space-y-3 flex-1 flex flex-col">
+          <div className="px-6 py-5 space-y-3 flex-1 flex flex-col">
 
             {/* Readiness score */}
             <div className="flex items-center gap-4 flex-shrink-0">
@@ -664,7 +667,7 @@ function CitizenPanel() {
             <div className="h-px bg-[#22c55e]/10 flex-shrink-0" />
 
             {/* Notification */}
-            <div className="flex-shrink-0 bg-[#22c55e]/[0.04] rounded px-2.5 py-2 border border-[#22c55e]/10">
+            <div className="flex-shrink-0 bg-[#22c55e]/[0.04] rounded px-4 py-3 border border-[#22c55e]/10">
               <span className="text-[9px] font-mono text-[#22c55e]/70 leading-relaxed">
                 ⚡ Pre-cooling activated for Tuesday ice storm. Est. savings: $3.40
               </span>
@@ -677,6 +680,7 @@ function CitizenPanel() {
 
             {/* Enter button */}
             <button
+              onClick={onEnter}
               className="w-full font-mono rounded-md border border-[#22c55e]/30 text-[#22c55e]/70 bg-[#22c55e]/[0.04] hover:bg-[#22c55e]/[0.12] hover:border-[#22c55e]/60 hover:text-[#22c55e] transition-all duration-300 cursor-pointer flex-shrink-0"
               style={{ padding: "14px 0", fontSize: "13px" }}
             >
@@ -748,6 +752,13 @@ function AnimatedStat({
 /*  Main page                                                         */
 /* ------------------------------------------------------------------ */
 export default function Home() {
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  const handleProfileSelect = (profile: ConsumerProfile) => {
+    console.log("Profile selected for dashboard:", profile);
+    // TODO: route to citizen dashboard with profile data
+  };
+
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[#0a0a0a]">
       {/* ---- Globe: full-screen background layer ---- */}
@@ -838,7 +849,7 @@ export default function Home() {
             className="flex items-center pointer-events-auto flex-shrink-0"
             style={{ marginRight: '3rem' }}
           >
-            <CitizenPanel />
+            <CitizenPanel onEnter={() => setIsProfileModalOpen(true)} />
           </motion.div>
 
           {/* Right marquee bar */}
@@ -869,6 +880,11 @@ export default function Home() {
           <AnimatedStat value={127} prefix="$" label="avg saved per household" />
         </motion.div>
       </div>
+      <ConsumerProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onSelect={handleProfileSelect}
+      />
     </main>
   );
 }

@@ -15,11 +15,6 @@
   --font-mono: var(--font-geist-mono);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
 
 html,
 body {
@@ -73,19 +68,19 @@ body::before {
 /* Panel float animations */
 @keyframes float-left {
   0%, 100% {
-    transform: translateY(0px) rotate(-1deg);
+    transform: translateY(0px);
   }
   50% {
-    transform: translateY(-6px) rotate(-1.3deg);
+    transform: translateY(-6px);
   }
 }
 
 @keyframes float-right {
   0%, 100% {
-    transform: translateY(0px) rotate(1deg);
+    transform: translateY(0px);
   }
   50% {
-    transform: translateY(-6px) rotate(1.3deg);
+    transform: translateY(-6px);
   }
 }
 
