@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     # ISO / grid data providers
     iso_api_key: str = ""
 
+    # Next.js mock data APIs (historical demand, wholesale prices)
+    # When set, backend can proxy to these instead of real EIA/ERCOT/CAISO/PJM.
+    next_mock_api_base: str = "http://localhost:3000"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
