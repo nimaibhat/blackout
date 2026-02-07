@@ -38,7 +38,11 @@ class Settings(BaseSettings):
     # ERCOT load data
     ercot_load_file: str = "app/data/ercot/Native_Load_2021.xlsx"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    # Supabase (for crews table, etc.)
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+
+    model_config = {"env_file": ["../.env", ".env"], "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

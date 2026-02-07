@@ -25,6 +25,16 @@ export interface ArcData {
   status: "critical" | "stressed" | "nominal";
 }
 
+export interface GridNode {
+  id: string;
+  lat: number;
+  lon: number;
+  base_load_mw: number;
+  capacity_mw: number;
+  voltage_kv: number;
+  weather_zone: string;
+}
+
 interface FocusedLocation {
   lat: number;
   lng: number;
@@ -34,6 +44,7 @@ interface FocusedLocation {
 interface OperatorGlobeProps {
   hotspots?: HotspotData[];
   arcs?: ArcData[];
+  gridNodes?: GridNode[];
   focusedLocation?: FocusedLocation | null;
   onSelectCity?: (city: HotspotData) => void;
   onDeselectCity?: () => void;
@@ -125,6 +136,7 @@ function greatCirclePoints(
 export default function OperatorGlobe({
   hotspots = DEFAULT_HOTSPOTS,
   arcs = DEFAULT_ARCS,
+  gridNodes = [],
   focusedLocation,
   onSelectCity,
   onDeselectCity,
@@ -176,6 +188,28 @@ export default function OperatorGlobe({
         geometry: { type: "Point", coordinates: [h.lng, h.lat] },
       })),
   }), [hotspots]);
+
+  const gridNodesGeoJSON = useMemo((): GeoJSON.FeatureCollection => ({
+    type: "FeatureCollection",
+    features: gridNodes.map((n) => {
+      // Color by voltage: 345/500kV = bright, 161kV = medium, <115kV = dim
+      const color = n.voltage_kv >= 300 ? "#3b82f6" : n.voltage_kv >= 100 ? "#6366f1" : "#4b5563";
+      const radius = n.voltage_kv >= 300 ? 3 : n.voltage_kv >= 100 ? 2 : 1.5;
+      return {
+        type: "Feature",
+        properties: {
+          id: n.id,
+          color,
+          radius,
+          voltage_kv: n.voltage_kv,
+          load_mw: n.base_load_mw,
+          capacity_mw: n.capacity_mw,
+          zone: n.weather_zone,
+        },
+        geometry: { type: "Point", coordinates: [n.lon, n.lat] },
+      };
+    }),
+  }), [gridNodes]);
 
   const arcsGeoJSON = useMemo((): GeoJSON.FeatureCollection => ({
     type: "FeatureCollection",
@@ -242,6 +276,29 @@ export default function OperatorGlobe({
 
       map.on("load", () => {
         if (cancelled) return;
+
+        /* --- Grid infrastructure nodes (background layer) --- */
+        map.addSource("grid-nodes", { type: "geojson", data: gridNodesGeoJSON });
+        map.addLayer({
+          id: "grid-node-dots",
+          type: "circle",
+          source: "grid-nodes",
+          paint: {
+            "circle-color": ["get", "color"],
+            "circle-radius": [
+              "interpolate", ["linear"], ["zoom"],
+              2, ["get", "radius"],
+              6, ["*", ["get", "radius"], 2],
+              10, ["*", ["get", "radius"], 3],
+            ],
+            "circle-opacity": [
+              "interpolate", ["linear"], ["zoom"],
+              2, 0.4,
+              6, 0.7,
+              10, 0.9,
+            ],
+          },
+        });
 
         /* --- Hotspot points source & layer --- */
         map.addSource("hotspots", { type: "geojson", data: hotspotsGeoJSON });
@@ -420,6 +477,13 @@ export default function OperatorGlobe({
     const src = map.getSource("arcs") as mapboxgl.GeoJSONSource | undefined;
     if (src) src.setData(arcsGeoJSON);
   }, [arcsGeoJSON]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const src = map.getSource("grid-nodes") as mapboxgl.GeoJSONSource | undefined;
+    if (src) src.setData(gridNodesGeoJSON);
+  }, [gridNodesGeoJSON]);
 
   /* ---- Prop-driven zoom (from sidebar clicks) ---- */
   useEffect(() => {
