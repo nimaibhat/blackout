@@ -225,9 +225,20 @@ export interface FailedNodeInfo {
   capacity_mw: number;
 }
 
+export interface RerouteArc {
+  from_id: string;
+  to_id: string;
+  from_lat: number;
+  from_lon: number;
+  to_lat: number;
+  to_lon: number;
+  load_mw: number;
+}
+
 export interface CascadeStep {
   step: number;
   new_failures: FailedNodeInfo[];
+  reroutes: RerouteArc[];
   total_failed: number;
   total_load_shed_mw: number;
 }

@@ -69,7 +69,8 @@ def run_cascade(
 
         failed.update(new_failures)
 
-        # Redistribute load from newly failed nodes.
+        # Redistribute load from newly failed nodes and track reroutes.
+        reroutes: List[Dict[str, Any]] = []
         for nid in new_failures:
             load_to_shed = g.nodes[nid]["current_load"] * REDISTRIBUTION_FACTOR
             alive_neighbours = [
@@ -79,6 +80,15 @@ def run_cascade(
                 per_neighbour = load_to_shed / len(alive_neighbours)
                 for nb in alive_neighbours:
                     g.nodes[nb]["current_load"] += per_neighbour
+                    reroutes.append({
+                        "from_id": nid,
+                        "to_id": nb,
+                        "from_lat": g.nodes[nid]["lat"],
+                        "from_lon": g.nodes[nid]["lon"],
+                        "to_lat": g.nodes[nb]["lat"],
+                        "to_lon": g.nodes[nb]["lon"],
+                        "load_mw": round(per_neighbour, 1),
+                    })
 
         total_shed = sum(g.nodes[nid]["current_load"] for nid in failed)
 
@@ -95,6 +105,7 @@ def run_cascade(
                     }
                     for nid in new_failures
                 ],
+                "reroutes": reroutes,
                 "total_failed": len(failed),
                 "total_load_shed_mw": round(total_shed, 1),
             }

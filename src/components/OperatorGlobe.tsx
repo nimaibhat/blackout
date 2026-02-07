@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
+import type { RerouteArc } from "@/lib/api";
 
 /* ================================================================== */
 /*  TYPES                                                              */
@@ -51,12 +52,28 @@ export interface GridEdge {
   capacity_mva: number;
 }
 
+export interface CrewMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  status: "deployed" | "en_route" | "standby";
+  label: string;
+  specialty: string;
+}
+
+export interface CascadeState {
+  failedNodeIds: Set<string>;
+  rerouteArcs: RerouteArc[];
+}
+
 interface OperatorGlobeProps {
   hotspots?: HotspotData[];
   arcs?: ArcData[];
   gridNodes?: GridNode[];
   gridEdges?: GridEdge[];
+  crews?: CrewMarker[];
   focusedLocation?: FocusedLocation | null;
+  cascadeState?: CascadeState | null;
   onSelectCity?: (city: HotspotData) => void;
   onDeselectCity?: () => void;
 }
@@ -125,12 +142,20 @@ function greatCirclePoints(
 /* ================================================================== */
 /*  COMPONENT                                                          */
 /* ================================================================== */
+const CREW_STATUS_COLORS: Record<string, string> = {
+  deployed: "#22c55e",
+  en_route: "#f59e0b",
+  standby: "#3b82f6",
+};
+
 export default function OperatorGlobe({
   hotspots = [],
   arcs = [],
   gridNodes = [],
   gridEdges = [],
+  crews = [],
   focusedLocation,
+  cascadeState,
   onSelectCity,
   onDeselectCity,
 }: OperatorGlobeProps) {
@@ -242,6 +267,86 @@ export default function OperatorGlobe({
     }),
   }), [gridEdges]);
 
+  /* ---- Crew markers GeoJSON ---- */
+  const crewsGeoJSON = useMemo((): GeoJSON.FeatureCollection => ({
+    type: "FeatureCollection",
+    features: crews.map((c) => ({
+      type: "Feature",
+      properties: {
+        id: c.id,
+        label: c.label,
+        specialty: c.specialty,
+        status: c.status,
+        color: CREW_STATUS_COLORS[c.status] ?? "#3b82f6",
+      },
+      geometry: { type: "Point", coordinates: [c.lng, c.lat] },
+    })),
+  }), [crews]);
+
+  /* ---- Cascade overlay GeoJSON ---- */
+  const cascadeFailedGeoJSON = useMemo((): GeoJSON.FeatureCollection => {
+    if (!cascadeState || cascadeState.failedNodeIds.size === 0) {
+      return { type: "FeatureCollection", features: [] };
+    }
+    const failedSet = cascadeState.failedNodeIds;
+    return {
+      type: "FeatureCollection",
+      features: gridNodes
+        .filter((n) => failedSet.has(n.id))
+        .map((n) => ({
+          type: "Feature" as const,
+          properties: { id: n.id },
+          geometry: { type: "Point" as const, coordinates: [n.lon, n.lat] },
+        })),
+    };
+  }, [cascadeState, gridNodes]);
+
+  const cascadeRerouteGeoJSON = useMemo((): GeoJSON.FeatureCollection => {
+    if (!cascadeState || cascadeState.rerouteArcs.length === 0) {
+      return { type: "FeatureCollection", features: [] };
+    }
+    return {
+      type: "FeatureCollection",
+      features: cascadeState.rerouteArcs.map((r) => ({
+        type: "Feature" as const,
+        properties: { load_mw: r.load_mw },
+        geometry: {
+          type: "LineString" as const,
+          coordinates: greatCirclePoints(r.from_lon, r.from_lat, r.to_lon, r.to_lat, 32),
+        },
+      })),
+    };
+  }, [cascadeState]);
+
+  // Track which nodes are "new" this step for shockwave
+  const prevFailedRef = useRef<Set<string>>(new Set());
+  const shockwaveGeoJSON = useMemo((): GeoJSON.FeatureCollection => {
+    if (!cascadeState || cascadeState.failedNodeIds.size === 0) {
+      prevFailedRef.current = new Set();
+      return { type: "FeatureCollection", features: [] };
+    }
+    const newIds: string[] = [];
+    cascadeState.failedNodeIds.forEach((id) => {
+      if (!prevFailedRef.current.has(id)) newIds.push(id);
+    });
+    prevFailedRef.current = new Set(cascadeState.failedNodeIds);
+
+    return {
+      type: "FeatureCollection",
+      features: gridNodes
+        .filter((n) => newIds.includes(n.id))
+        .map((n) => ({
+          type: "Feature" as const,
+          properties: { id: n.id },
+          geometry: { type: "Point" as const, coordinates: [n.lon, n.lat] },
+        })),
+    };
+  }, [cascadeState, gridNodes]);
+
+  // Shockwave animation state
+  const shockwaveStartRef = useRef<number>(0);
+  const shockwaveAnimRef = useRef<number>(0);
+
   /* ---- Initialize map ---- */
   useEffect(() => {
     if (!containerRef.current) return;
@@ -326,6 +431,55 @@ export default function OperatorGlobe({
           },
         });
 
+        /* --- Cascade layers (between grid-nodes and hotspots) --- */
+        map.addSource("cascade-failed", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addLayer({
+          id: "cascade-failed-nodes",
+          type: "circle",
+          source: "cascade-failed",
+          paint: {
+            "circle-color": "#1a0000",
+            "circle-radius": [
+              "interpolate", ["linear"], ["zoom"],
+              2, 4, 6, 8, 10, 14,
+            ],
+            "circle-opacity": 0.9,
+            "circle-stroke-color": "#ef4444",
+            "circle-stroke-width": 2.5,
+            "circle-stroke-opacity": 0.9,
+          },
+        });
+
+        map.addSource("cascade-reroutes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addLayer({
+          id: "cascade-reroute-arcs",
+          type: "line",
+          source: "cascade-reroutes",
+          paint: {
+            "line-color": "#f59e0b",
+            "line-width": [
+              "interpolate", ["linear"], ["zoom"],
+              2, 1.5, 6, 2.5, 10, 4,
+            ],
+            "line-opacity": 0.8,
+            "line-dasharray": [4, 3],
+          },
+        });
+
+        map.addSource("cascade-shockwave", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addLayer({
+          id: "cascade-shockwave-ring",
+          type: "circle",
+          source: "cascade-shockwave",
+          paint: {
+            "circle-color": "transparent",
+            "circle-radius": 8,
+            "circle-stroke-color": "#ef4444",
+            "circle-stroke-width": 2.5,
+            "circle-stroke-opacity": 0.8,
+          },
+        });
+
         /* --- Hotspot points source & layer --- */
         map.addSource("hotspots", { type: "geojson", data: hotspotsGeoJSON });
         map.addLayer({
@@ -380,6 +534,58 @@ export default function OperatorGlobe({
             "line-width": ["get", "width"],
             "line-opacity": ["get", "opacity"],
             "line-dasharray": [2, 2],
+          },
+        });
+
+        /* --- Crew markers --- */
+        map.addSource("crews", { type: "geojson", data: crewsGeoJSON });
+        // Outer glow ring
+        map.addLayer({
+          id: "crew-glow",
+          type: "circle",
+          source: "crews",
+          paint: {
+            "circle-color": ["get", "color"],
+            "circle-radius": [
+              "interpolate", ["linear"], ["zoom"],
+              2, 6, 6, 12, 10, 18,
+            ],
+            "circle-opacity": 0.15,
+          },
+        });
+        // Inner dot
+        map.addLayer({
+          id: "crew-dots",
+          type: "circle",
+          source: "crews",
+          paint: {
+            "circle-color": ["get", "color"],
+            "circle-radius": [
+              "interpolate", ["linear"], ["zoom"],
+              2, 3.5, 6, 6, 10, 9,
+            ],
+            "circle-opacity": 0.95,
+            "circle-stroke-color": "#0a0a0a",
+            "circle-stroke-width": 1.5,
+          },
+        });
+        // Label (visible at zoom >= 6)
+        map.addLayer({
+          id: "crew-labels",
+          type: "symbol",
+          source: "crews",
+          minzoom: 6,
+          layout: {
+            "text-field": ["get", "label"],
+            "text-size": 10,
+            "text-offset": [0, 1.4],
+            "text-anchor": "top",
+            "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+          },
+          paint: {
+            "text-color": ["get", "color"],
+            "text-halo-color": "#0a0a0a",
+            "text-halo-width": 1,
           },
         });
 
@@ -489,6 +695,59 @@ export default function OperatorGlobe({
     const src = map.getSource("grid-edges") as mapboxgl.GeoJSONSource | undefined;
     if (src) src.setData(gridEdgesGeoJSON);
   }, [gridEdgesGeoJSON]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const src = map.getSource("crews") as mapboxgl.GeoJSONSource | undefined;
+    if (src) src.setData(crewsGeoJSON);
+  }, [crewsGeoJSON]);
+
+  /* ---- Update cascade layers ---- */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const src = map.getSource("cascade-failed") as mapboxgl.GeoJSONSource | undefined;
+    if (src) src.setData(cascadeFailedGeoJSON);
+  }, [cascadeFailedGeoJSON]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const src = map.getSource("cascade-reroutes") as mapboxgl.GeoJSONSource | undefined;
+    if (src) src.setData(cascadeRerouteGeoJSON);
+  }, [cascadeRerouteGeoJSON]);
+
+  // Shockwave: update source + run expanding ring animation
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const src = map.getSource("cascade-shockwave") as mapboxgl.GeoJSONSource | undefined;
+    if (src) src.setData(shockwaveGeoJSON);
+
+    // Only animate if there are new shockwave points
+    if (shockwaveGeoJSON.features.length === 0) return;
+
+    cancelAnimationFrame(shockwaveAnimRef.current);
+    shockwaveStartRef.current = performance.now();
+    const DURATION = 1500; // ms
+
+    function animateShockwave() {
+      if (!map || !map.getLayer("cascade-shockwave-ring")) return;
+      const elapsed = performance.now() - shockwaveStartRef.current;
+      const t = Math.min(elapsed / DURATION, 1);
+      const radius = 8 + t * 40;
+      const opacity = (1 - t) * 0.8;
+      map.setPaintProperty("cascade-shockwave-ring", "circle-radius", radius);
+      map.setPaintProperty("cascade-shockwave-ring", "circle-stroke-opacity", opacity);
+      if (t < 1) {
+        shockwaveAnimRef.current = requestAnimationFrame(animateShockwave);
+      }
+    }
+    shockwaveAnimRef.current = requestAnimationFrame(animateShockwave);
+
+    return () => cancelAnimationFrame(shockwaveAnimRef.current);
+  }, [shockwaveGeoJSON]);
 
   /* ---- Prop-driven zoom (from sidebar clicks) ---- */
   useEffect(() => {

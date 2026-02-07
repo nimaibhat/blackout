@@ -50,7 +50,7 @@ _URI_CREWS_FALLBACK: List[dict] = [
     {"crew_id": "CREW-TX-22", "name": "Dallas Substation Bravo",     "specialty": "substation",   "city": "Dallas",         "lat": 32.78, "lon": -96.80},
     {"crew_id": "CREW-TX-08", "name": "Austin Distribution Charlie", "specialty": "distribution", "city": "Austin",         "lat": 30.27, "lon": -97.74},
     {"crew_id": "CREW-TX-31", "name": "San Antonio Gen Delta",       "specialty": "generation",   "city": "San Antonio",    "lat": 29.42, "lon": -98.49},
-    {"crew_id": "CREW-NY-05", "name": "New York Mutual Aid Echo",    "specialty": "line_repair",  "city": "New York (MA)",  "lat": 32.00, "lon": -97.00},
+    {"crew_id": "CREW-TX-51", "name": "Waco Line Whiskey",           "specialty": "line_repair",  "city": "Waco",           "lat": 31.55, "lon": -97.15},
     {"crew_id": "CREW-TX-17", "name": "Midland Gen Foxtrot",         "specialty": "generation",   "city": "Midland",        "lat": 31.99, "lon": -102.08},
     {"crew_id": "CREW-TX-42", "name": "Corpus Christi Dist Golf",    "specialty": "distribution", "city": "Corpus Christi", "lat": 27.80, "lon": -97.40},
 ]
