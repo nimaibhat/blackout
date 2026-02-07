@@ -12,7 +12,7 @@ from app.services import demand_service
 from app.services.cascade_service import run_cascade
 from app.services.grid_graph_service import grid_graph
 
-logger = logging.getLogger("blackout.simulate_service")
+logger = logging.getLogger("gridlock.simulate_service")
 
 
 async def run_cascade_simulation(

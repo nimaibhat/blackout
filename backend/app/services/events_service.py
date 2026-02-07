@@ -13,7 +13,7 @@ import requests
 from app.config import settings
 from app.models.utility import EventSeverity, TimelineEvent
 
-logger = logging.getLogger("blackout.events")
+logger = logging.getLogger("gridlock.events")
 
 # ── Supabase helpers ────────────────────────────────────────────────
 
@@ -211,7 +211,7 @@ _URI_EVENTS: List[dict] = [
     {
         "event_id": "EVT-008",
         "timestamp_offset_minutes": 340,
-        "title": "Rolling Blackouts Initiated",
+        "title": "Rolling Gridlocks Initiated",
         "description": "ERCOT orders controlled load shed across all regions. 10,500 MW curtailed.",
         "severity": "emergency",
         "region": None,
@@ -275,7 +275,7 @@ _URI_EVENTS: List[dict] = [
         "event_id": "EVT-015",
         "timestamp_offset_minutes": 1440,
         "title": "24-Hour Mark — 4.5M Without Power",
-        "description": "Rolling blackouts extended. 4.5 million customers without power across Texas.",
+        "description": "Rolling gridlocks extended. 4.5 million customers without power across Texas.",
         "severity": "emergency",
         "region": None,
         "affected_nodes": 30,

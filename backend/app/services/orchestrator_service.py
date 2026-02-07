@@ -28,7 +28,7 @@ from app.services.price_service import price_service
 from app.services.claude_service import enhance_alerts
 from app.services.utility_service import get_crews
 
-logger = logging.getLogger("blackout.orchestrator")
+logger = logging.getLogger("gridlock.orchestrator")
 
 
 # ── Supabase helpers ──────────────────────────────────────────────────
@@ -225,7 +225,7 @@ def run_orchestrated_simulation(
             "title": f"Load Shed Warning — {cascade_result['total_load_shed_mw']:.0f} MW",
             "description": (
                 f"Significant load shedding of {cascade_result['total_load_shed_mw']:.0f} MW "
-                f"detected. Rolling blackouts may affect your area. "
+                f"detected. Rolling gridlocks may affect your area. "
                 f"Ensure battery reserves are charged."
             ),
             "alert_type": "load_shed",

@@ -78,13 +78,13 @@ const SEVERITY_BADGE: Record<number, { text: string; bg: string; border: string 
 /* ================================================================== */
 function mapStatus(s: string): "nominal" | "stressed" | "critical" {
   if (s === "stressed") return "stressed";
-  if (s === "critical" || s === "blackout") return "critical";
+  if (s === "critical" || s === "gridlock") return "critical";
   return "nominal";
 }
 
 function mapGridStatus(s: string): GridStatus {
   const m = s.toLowerCase();
-  if (m === "critical" || m === "blackout" || m === "cascade") return "CRITICAL";
+  if (m === "critical" || m === "gridlock" || m === "cascade") return "CRITICAL";
   if (m === "stressed") return "STRESSED";
   return "NOMINAL";
 }
@@ -173,9 +173,9 @@ function buildThreats(overview: OverviewData) {
     .filter((r) => r.weather.is_extreme || r.status !== "normal")
     .map((r, i) => ({
       id: `t-${r.region_id}`,
-      icon: r.status === "critical" || r.status === "blackout" ? "🔴" : r.weather.is_extreme ? "🟡" : "🟢",
+      icon: r.status === "critical" || r.status === "gridlock" ? "🔴" : r.weather.is_extreme ? "🟡" : "🟢",
       name: `${r.weather.condition} — ${r.name}`,
-      severity: r.status === "critical" || r.status === "blackout" ? 4 : r.weather.is_extreme ? 3 : 2,
+      severity: r.status === "critical" || r.status === "gridlock" ? 4 : r.weather.is_extreme ? 3 : 2,
       region: "ERCOT",
       lat: 30.27 + (i - 3) * 0.8,
       lng: -97.74 + (i - 3) * 1.2,
@@ -590,7 +590,7 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
         <div className="flex items-center gap-2.5 flex-shrink-0">
           <div className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
           <span className="text-[15px] font-semibold tracking-tight text-white">
-            blackout
+            gridlock
           </span>
         </div>
 

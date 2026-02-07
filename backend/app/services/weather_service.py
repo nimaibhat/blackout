@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
-logger = logging.getLogger("blackout.weather")
+logger = logging.getLogger("gridlock.weather")
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 

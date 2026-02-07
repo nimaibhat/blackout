@@ -229,7 +229,7 @@ function IOSNotification({
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-[11px] font-semibold text-white/80 block">
-            Blackout
+            Gridlock
           </span>
           <span className="text-[9px] text-white/30">now</span>
         </div>
@@ -924,7 +924,7 @@ export default function SimulationPage() {
             href="/"
             className="text-[14px] font-semibold tracking-tight text-white hover:text-[#22c55e] transition-colors"
           >
-            blackout
+            gridlock
           </a>
           <span className="text-white/15 mx-1.5">/</span>
           <span className="text-[12px] font-mono text-white/40">
@@ -1037,7 +1037,7 @@ export default function SimulationPage() {
                     type="text"
                     value={ntfyTopic}
                     onChange={(e) => setNtfyTopic(e.target.value)}
-                    placeholder="ntfy topic, e.g. blackout-martinez"
+                    placeholder="ntfy topic, e.g. gridlock-martinez"
                     className="w-full text-[10px] font-mono bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 text-white/60 placeholder:text-white/15 focus:outline-none focus:border-[#22c55e]/30"
                   />
                   <input

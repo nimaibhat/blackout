@@ -2,7 +2,7 @@
 """Standalone XGBoost training script for ERCOT wholesale electricity price prediction.
 
 Produces a trained sklearn Pipeline (StandardScaler + XGBRegressor) that the
-Blackout API's price service can optionally load for ML-based forecasting.
+Gridlock API's price service can optionally load for ML-based forecasting.
 If the API cannot find the .pkl file, it falls back to deterministic rules mode.
 
 Usage:
@@ -779,7 +779,7 @@ def train_and_evaluate(
     # 4. Training report
     report_lines = [
         "=" * 62,
-        "  BLACKOUT — XGBoost Price Model Training Report",
+        "  GRIDLOCK — XGBoost Price Model Training Report",
         "=" * 62,
         "",
         f"  Date:           {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
@@ -912,7 +912,7 @@ def _save_eval_chart(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Train XGBoost price model for the Blackout API",
+        description="Train XGBoost price model for the Gridlock API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
@@ -944,7 +944,7 @@ def main() -> None:
     total_start = time.time()
     print()
     print("  ┌──────────────────────────────────────────────────────┐")
-    print("  │   Blackout — XGBoost Price Model Training            │")
+    print("  │   Gridlock — XGBoost Price Model Training            │")
     print("  └──────────────────────────────────────────────────────┘")
     print(f"  Data source:  {args.data_source}")
     print(f"  Output dir:   {args.output_dir}")

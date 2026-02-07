@@ -20,7 +20,7 @@ import requests
 from app.services.ercot_data_service import ercot_data
 from app.services.grid_graph_service import grid_graph, ZONE_CENTROIDS
 
-logger = logging.getLogger("blackout.demand")
+logger = logging.getLogger("gridlock.demand")
 
 # ── Time-of-day load curve (hour → multiplier) ─────────────────────
 # Kept here because price_service imports it for price modeling.

@@ -12,7 +12,7 @@ from app.services import demand_service
 from app.services.cascade_service import run_cascade
 from app.services.grid_graph_service import grid_graph
 
-logger = logging.getLogger("blackout.grid_service")
+logger = logging.getLogger("gridlock.grid_service")
 
 DEFAULT_FORECAST_HOUR = 36
 

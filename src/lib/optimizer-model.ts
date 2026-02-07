@@ -1,5 +1,5 @@
 /**
- * Blackout Optimizer Model
+ * Gridlock Optimizer Model
  *
  * A feature-based optimization model that mimics ML behavior.
  * Given a set of input features about the grid state and household,
@@ -245,7 +245,7 @@ export function runModel(input: ModelInput): ModelOutput {
     estimatedCredits: credits,
     featureWeights: features,
     reasoningChain: reasoning,
-    modelVersion: "blackout-opt-v1.2.0",
+    modelVersion: "gridlock-opt-v1.2.0",
     inferenceTimeMs,
   };
 }

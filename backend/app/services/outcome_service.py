@@ -1,4 +1,4 @@
-"""Outcome Service — compares Without vs With Blackout scenarios for the command bar."""
+"""Outcome Service — compares Without vs With Gridlock scenarios for the command bar."""
 
 from __future__ import annotations
 
@@ -29,9 +29,9 @@ def _count_affected_zones(failed_ids: list[str]) -> int:
 
 
 def get_outcomes(scenario: str = "uri") -> OutcomeComparison:
-    """Run cascade with and without Blackout optimization, compare results."""
+    """Run cascade with and without Gridlock optimization, compare results."""
 
-    # ── Without Blackout: full demand, no mitigation ─────────────────
+    # ── Without Gridlock: full demand, no mitigation ─────────────────
     multipliers_raw = demand_service.compute_demand_multipliers(
         scenario=scenario, forecast_hour=36
     )
@@ -49,7 +49,7 @@ def get_outcomes(scenario: str = "uri") -> OutcomeComparison:
     regions_without = _count_affected_zones(result_without["failed_node_ids"])
     steps_without = result_without["cascade_depth"]
 
-    # ── With Blackout: 12% demand reduction + crew repair factor ────
+    # ── With Gridlock: 12% demand reduction + crew repair factor ────
     multipliers_mitigated = {
         nid: mult * 0.88 for nid, mult in multipliers_raw.items()
     }
@@ -57,7 +57,7 @@ def get_outcomes(scenario: str = "uri") -> OutcomeComparison:
     result_with = run_cascade(
         graph=grid_graph.graph,
         demand_multipliers=multipliers_mitigated,
-        scenario_label=f"{scenario}_with_blackout",
+        scenario_label=f"{scenario}_with_gridlock",
         forecast_hour=36,
     )
 
@@ -79,26 +79,26 @@ def get_outcomes(scenario: str = "uri") -> OutcomeComparison:
         price_without = round(_NORMAL_PRICE_MWH * (1 + failure_ratio * 50), 2)
         price_with = round(price_without * (failed_with / max(failed_without, 1)), 2)
 
-    # ── Blackout duration ───────────────────────────────────────────
+    # ── Gridlock duration ───────────────────────────────────────────
     duration_without = 48.0
     duration_with = max(0, duration_without * (failed_with / max(failed_without, 1)))
 
     # ── Build comparison ────────────────────────────────────────────
     without = ScenarioOutcome(
-        scenario_name="Without Blackout",
+        scenario_name="Without Gridlock",
         total_affected_customers=customers_without,
         peak_price_mwh=price_without,
-        blackout_duration_hours=duration_without,
+        gridlock_duration_hours=duration_without,
         regions_affected=regions_without,
         cascade_steps=steps_without,
         failed_nodes=failed_without,
     )
 
     with_bo = ScenarioOutcome(
-        scenario_name="With Blackout",
+        scenario_name="With Gridlock",
         total_affected_customers=customers_with,
         peak_price_mwh=price_with,
-        blackout_duration_hours=round(duration_with, 1),
+        gridlock_duration_hours=round(duration_with, 1),
         regions_affected=regions_with,
         cascade_steps=steps_with,
         failed_nodes=failed_with,
@@ -113,8 +113,8 @@ def get_outcomes(scenario: str = "uri") -> OutcomeComparison:
     )
 
     return OutcomeComparison(
-        without_blackout=without,
-        with_blackout=with_bo,
+        without_gridlock=without,
+        with_gridlock=with_bo,
         customers_saved=customers_saved,
         price_reduction_pct=price_reduction,
         cascade_reduction_pct=cascade_reduction,

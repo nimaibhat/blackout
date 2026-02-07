@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "Blackout API"
+    app_name: str = "Gridlock API"
     app_version: str = "0.1.0"
     debug: bool = False
 
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     earth2_base_url: str = "https://api.earth2.example.com"
 
     # Database (for future use)
-    database_url: str = "sqlite+aiosqlite:///./blackout.db"
+    database_url: str = "sqlite+aiosqlite:///./gridlock.db"
 
     # ISO / grid data providers
     iso_api_key: str = ""

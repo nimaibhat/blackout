@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Blackout API — grid forecasting, simulation, and consumer intelligence",
+    description="Gridlock API — grid forecasting, simulation, and consumer intelligence",
     lifespan=lifespan,
 )
 

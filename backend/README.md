@@ -1,4 +1,4 @@
-# Blackout API
+# Gridlock API
 
 FastAPI backend for grid forecasting, cascade simulation, and consumer energy intelligence.
 

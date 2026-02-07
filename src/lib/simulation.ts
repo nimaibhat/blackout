@@ -213,12 +213,12 @@ const EVENT_TEMPLATES: Record<
 > = {
   DEMAND_REDUCTION: {
     title: "Grid Load Critical — 95%",
-    description: "Grid is near capacity. Reducing demand prevents rolling blackouts.",
+    description: "Grid is near capacity. Reducing demand prevents rolling gridlocks.",
     severity: "HIGH",
     icon: "⚡",
     notificationTitle: "⚡ Grid Stress Alert",
     notificationBody:
-      "Grid load has hit 95%. We recommend lowering your thermostat by {delta}°C to help prevent a blackout in your area. You'll earn {credits} resilience credits.",
+      "Grid load has hit 95%. We recommend lowering your thermostat by {delta}°C to help prevent a gridlock in your area. You'll earn {credits} resilience credits.",
     gridLoad: 95,
     price: 0.32,
     delta: -3,
@@ -291,8 +291,8 @@ const EVENT_TEMPLATES: Record<
 /* ------------------------------------------------------------------ */
 /*  State — persisted on globalThis to survive Next.js hot reloads     */
 /* ------------------------------------------------------------------ */
-const GLOBAL_KEY = "__blackout_sim_state__" as const;
-const GLOBAL_ID_KEY = "__blackout_sim_id__" as const;
+const GLOBAL_KEY = "__gridlock_sim_state__" as const;
+const GLOBAL_ID_KEY = "__gridlock_sim_id__" as const;
 
 function getDefaultState(): SimulationState {
   return {

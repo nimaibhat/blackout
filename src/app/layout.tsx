@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "blackout — Power Grid Prediction",
+  title: "gridlock — Power Grid Prediction",
   description: "Predict the grid. Protect the people.",
 };
 

@@ -14,7 +14,7 @@ class RegionStatus(str, Enum):
     NORMAL = "normal"
     STRESSED = "stressed"
     CRITICAL = "critical"
-    BLACKOUT = "blackout"
+    GRIDLOCK = "gridlock"
 
 
 class CrewStatus(str, Enum):
@@ -107,15 +107,15 @@ class ScenarioOutcome(BaseModel):
     scenario_name: str
     total_affected_customers: int
     peak_price_mwh: float
-    blackout_duration_hours: float
+    gridlock_duration_hours: float
     regions_affected: int
     cascade_steps: int
     failed_nodes: int
 
 
 class OutcomeComparison(BaseModel):
-    without_blackout: ScenarioOutcome
-    with_blackout: ScenarioOutcome
+    without_gridlock: ScenarioOutcome
+    with_gridlock: ScenarioOutcome
     customers_saved: int
     price_reduction_pct: float
     cascade_reduction_pct: float

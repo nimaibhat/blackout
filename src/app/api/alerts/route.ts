@@ -25,8 +25,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 /* ------------------------------------------------------------------ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const g = globalThis as any;
-const ACTIONS_KEY = "__blackout_alert_actions__";
-const SAVINGS_KEY = "__blackout_alert_savings__";
+const ACTIONS_KEY = "__gridlock_alert_actions__";
+const SAVINGS_KEY = "__gridlock_alert_savings__";
 if (!g[ACTIONS_KEY]) g[ACTIONS_KEY] = new Map<string, AlertAction>();
 if (!g[SAVINGS_KEY]) g[SAVINGS_KEY] = new Map<string, number>();
 function getActionsStore(): Map<string, AlertAction> {

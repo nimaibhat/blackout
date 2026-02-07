@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Any, Dict, List
 
-logger = logging.getLogger("blackout.claude")
+logger = logging.getLogger("gridlock.claude")
 
 # ── ERCOT pricing context ─────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ ERCOT Residential Electricity Pricing Reference (Texas):
 - Critical grid threshold: >$1,000/MWh wholesale indicates severe stress
 """.strip()
 
-SYSTEM_PROMPT = f"""You are a grid operations alert writer for Blackout, a Texas power grid monitoring system.
+SYSTEM_PROMPT = f"""You are a grid operations alert writer for Gridlock, a Texas power grid monitoring system.
 You write SHORT, clear, actionable alert text for utility operators and consumers.
 
 Rules:

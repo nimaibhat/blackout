@@ -29,7 +29,7 @@ export interface RegionWeather {
 export interface RegionOverview {
   region_id: string;
   name: string;
-  status: "normal" | "stressed" | "critical" | "blackout";
+  status: "normal" | "stressed" | "critical" | "gridlock";
   load_mw: number;
   capacity_mw: number;
   utilization_pct: number;
@@ -248,15 +248,15 @@ export interface ScenarioOutcome {
   scenario_name: string;
   total_affected_customers: number;
   peak_price_mwh: number;
-  blackout_duration_hours: number;
+  gridlock_duration_hours: number;
   regions_affected: number;
   cascade_steps: number;
   failed_nodes: number;
 }
 
 export interface OutcomeComparison {
-  without_blackout: ScenarioOutcome;
-  with_blackout: ScenarioOutcome;
+  without_gridlock: ScenarioOutcome;
+  with_gridlock: ScenarioOutcome;
   customers_saved: number;
   price_reduction_pct: number;
   cascade_reduction_pct: number;

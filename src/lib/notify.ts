@@ -11,8 +11,8 @@
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const g = globalThis as any;
-const TOPIC_KEY = "__blackout_ntfy_topic__";
-const BASEURL_KEY = "__blackout_ntfy_baseurl__";
+const TOPIC_KEY = "__gridlock_ntfy_topic__";
+const BASEURL_KEY = "__gridlock_ntfy_baseurl__";
 
 /** Get the current ntfy topic (null = notifications disabled) */
 export function getNtfyTopic(): string | null {
@@ -73,9 +73,9 @@ export interface NtfyOptions {
 
 /** Void logo URLs (hosted on GitHub for public access) */
 const VOID_LOGO_ICON =
-  "https://raw.githubusercontent.com/nimaibhat/blackout/enode-simulation/public/Void_Logo_small.png";
+  "https://raw.githubusercontent.com/nimaibhat/gridlock/enode-simulation/public/Void_Logo_small.png";
 const VOID_LOGO_ATTACH =
-  "https://raw.githubusercontent.com/nimaibhat/blackout/enode-simulation/public/Void_Logo_small.png";
+  "https://raw.githubusercontent.com/nimaibhat/gridlock/enode-simulation/public/Void_Logo_small.png";
 
 /**
  * Send a push notification via ntfy.sh (JSON API for unicode support).

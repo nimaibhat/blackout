@@ -14,7 +14,7 @@ import requests
 
 from app.config import settings
 
-logger = logging.getLogger("blackout.grid_graph")
+logger = logging.getLogger("gridlock.grid_graph")
 
 # ── ERCOT Weather Zone bounding boxes ────────────────────────────────
 # Ordered from most specific to least; first match wins.

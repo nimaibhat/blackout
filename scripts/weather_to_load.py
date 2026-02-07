@@ -399,13 +399,13 @@ def print_summary(df: pd.DataFrame) -> None:
         ml = df["predicted_load_ml_mw"].astype(int)
         print(f"  ML Load:      {ml.min():,} MW min  /  {ml.max():,} MW max  /  {ml.mean():,.0f} MW avg")
 
-    # Blackout risk (use ML if available, else physics)
+    # Gridlock risk (use ML if available, else physics)
     check = df["predicted_load_ml_mw"].astype(float) if has_ml else physics.astype(float)
     max_load = check.max()
     if max_load >= 80_000:
         print()
         if max_load >= 100_000:
-            print("  *** EXTREME BLACKOUT RISK ***")
+            print("  *** EXTREME GRIDLOCK RISK ***")
             print(f"  Predicted peak of {max_load:,.0f} MW exceeds ERCOT capacity!")
         else:
             print("  ** HIGH LOAD WARNING **")

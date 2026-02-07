@@ -702,7 +702,7 @@ function CascadeSimulation({
 /* ================================================================== */
 /*  PHASE 2 — IMPACT ANALYSIS                                         */
 /* ================================================================== */
-function buildMetricsFromOutcomes(wo: { total_affected_customers: number; peak_price_mwh: number; blackout_duration_hours: number; cascade_steps: number; failed_nodes: number }, wi: { total_affected_customers: number; peak_price_mwh: number; blackout_duration_hours: number; cascade_steps: number; failed_nodes: number }, customersSaved: number, priceReductionPct: number, cascadeReductionPct: number): ImpactMetric[] {
+function buildMetricsFromOutcomes(wo: { total_affected_customers: number; peak_price_mwh: number; gridlock_duration_hours: number; cascade_steps: number; failed_nodes: number }, wi: { total_affected_customers: number; peak_price_mwh: number; gridlock_duration_hours: number; cascade_steps: number; failed_nodes: number }, customersSaved: number, priceReductionPct: number, cascadeReductionPct: number): ImpactMetric[] {
   const pctDelta = (a: number, b: number) => {
     if (a === 0) return b > 0 ? `+${b}` : "—";
     const pct = Math.round(((a - b) / a) * 100);
@@ -729,10 +729,10 @@ function buildMetricsFromOutcomes(wo: { total_affected_customers: number; peak_p
       delta: `↓ ${Math.round(priceReductionPct)}%`,
     },
     {
-      label: "BLACKOUT DURATION",
-      without: { value: wo.blackout_duration_hours, fmt: (n) => `${n.toFixed(1)}h`, desc: "total blackout hours" },
-      withBo: { value: wi.blackout_duration_hours, fmt: (n) => `${n.toFixed(1)}h`, desc: "reduced via load management" },
-      delta: pctDelta(wo.blackout_duration_hours, wi.blackout_duration_hours),
+      label: "GRIDLOCK DURATION",
+      without: { value: wo.gridlock_duration_hours, fmt: (n) => `${n.toFixed(1)}h`, desc: "total gridlock hours" },
+      withBo: { value: wi.gridlock_duration_hours, fmt: (n) => `${n.toFixed(1)}h`, desc: "reduced via load management" },
+      delta: pctDelta(wo.gridlock_duration_hours, wi.gridlock_duration_hours),
     },
     {
       label: "CASCADE DEPTH",
@@ -778,11 +778,11 @@ function ImpactAnalysis({
       .then((r) => r.json())
       .then((res) => {
         const data = res.data;
-        if (data?.without_blackout && data?.with_blackout) {
+        if (data?.without_gridlock && data?.with_gridlock) {
           setMetrics(
             buildMetricsFromOutcomes(
-              data.without_blackout,
-              data.with_blackout,
+              data.without_gridlock,
+              data.with_gridlock,
               data.customers_saved,
               data.price_reduction_pct,
               data.cascade_reduction_pct,
@@ -829,7 +829,7 @@ function ImpactAnalysis({
               <div className="flex items-center gap-2">
                 <span className="text-lg">{"\u274C"}</span>
                 <span className="text-xl font-bold text-[#ef4444]">
-                  WITHOUT BLACKOUT
+                  WITHOUT GRIDLOCK
                 </span>
               </div>
             </motion.div>
@@ -842,7 +842,7 @@ function ImpactAnalysis({
               <div className="flex items-center gap-2">
                 <span className="text-lg">{"\u2705"}</span>
                 <span className="text-xl font-bold text-[#22c55e]">
-                  WITH BLACKOUT
+                  WITH GRIDLOCK
                 </span>
               </div>
             </motion.div>

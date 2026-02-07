@@ -33,7 +33,7 @@ from app.models.consumer import (
 from app.models.price import HourlyPrice, PricingMode
 from app.services.price_service import price_service
 
-logger = logging.getLogger("blackout.consumer")
+logger = logging.getLogger("gridlock.consumer")
 
 # ── Appliance / battery / solar defaults for dynamic profiles ────────
 

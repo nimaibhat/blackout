@@ -16,7 +16,7 @@ from app.services import demand_service
 from app.services.demand_service import _fetch_zone_weather
 from app.services.grid_graph_service import grid_graph
 
-logger = logging.getLogger("blackout.overview_service")
+logger = logging.getLogger("gridlock.overview_service")
 
 # ── Weather zone display names ──────────────────────────────────────
 
@@ -99,7 +99,7 @@ def _build_live_weather() -> Dict[str, dict]:
 
 def _status_from_utilization(pct: float) -> RegionStatus:
     if pct >= 95:
-        return RegionStatus.BLACKOUT
+        return RegionStatus.GRIDLOCK
     if pct >= 85:
         return RegionStatus.CRITICAL
     if pct >= 70:
@@ -111,7 +111,7 @@ _STATUS_RANK = {
     RegionStatus.NORMAL: 0,
     RegionStatus.STRESSED: 1,
     RegionStatus.CRITICAL: 2,
-    RegionStatus.BLACKOUT: 3,
+    RegionStatus.GRIDLOCK: 3,
 }
 
 
@@ -192,7 +192,7 @@ def get_overview(scenario: str = "uri") -> NationalOverview:
             freq -= 0.1
         elif r.status == RegionStatus.CRITICAL:
             freq -= 0.3
-        elif r.status == RegionStatus.BLACKOUT:
+        elif r.status == RegionStatus.GRIDLOCK:
             freq -= 0.5
 
     return NationalOverview(

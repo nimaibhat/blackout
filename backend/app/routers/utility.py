@@ -84,7 +84,7 @@ async def events_stream(
 async def outcomes(
     scenario: str = Query(default="uri", examples=["uri", "normal"]),
 ) -> SuccessResponse[OutcomeComparison]:
-    """Without/With Blackout comparison."""
+    """Without/With Gridlock comparison."""
     data = outcome_service.get_outcomes(scenario=scenario)
     return SuccessResponse(data=data)
 

@@ -15,7 +15,7 @@ import requests
 
 from app.config import settings
 
-logger = logging.getLogger("blackout.ercot_data")
+logger = logging.getLogger("gridlock.ercot_data")
 
 # Supabase column → ERCOT weather zone name
 _SUPABASE_COL_TO_ZONE: Dict[str, str] = {

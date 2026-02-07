@@ -37,7 +37,7 @@ const CONNECTION_TIMEOUT_MS = 15_000; // 15 seconds (default is 5s)
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const g = globalThis as any;
-const CLIENT_KEY = "__blackout_xrpl_client__";
+const CLIENT_KEY = "__gridlock_xrpl_client__";
 
 /** Get (or create) a persistent XRPL client, trying multiple servers. */
 export async function getClient(): Promise<xrpl.Client> {

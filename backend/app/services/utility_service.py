@@ -10,7 +10,7 @@ import requests
 from app.config import settings
 from app.models.utility import Crew, CrewOptimizationResponse, CrewStatus
 
-logger = logging.getLogger("blackout.utility")
+logger = logging.getLogger("gridlock.utility")
 
 # ── Supabase fetch ────────────────────────────────────────────────────
 
