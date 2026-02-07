@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ================================================================== */
@@ -31,38 +31,9 @@ interface OperatorRightSidebarProps {
   crews?: CrewData[];
   events?: EventData[];
   crewCoverage?: number;
+  scenario?: string;
   onFocusLocation: (location: { lat: number; lng: number; altitude?: number }) => void;
 }
-
-/* ================================================================== */
-/*  DEFAULTS                                                           */
-/* ================================================================== */
-const DEFAULT_CREWS: CrewData[] = [
-  { id: "CREW-TX-14", status: "deployed", location: "West Texas · Sub WTX-04", lat: 31.5, lng: -100.4, personnel: 6 },
-  { id: "CREW-TX-22", status: "deployed", location: "Austin Metro · Sub ATX-12", lat: 30.27, lng: -97.74, personnel: 8 },
-  { id: "CREW-TX-08", status: "en_route", location: "Houston · Sub HOU-07", lat: 29.76, lng: -95.37, personnel: 5, eta: "1h 30m" },
-  { id: "CREW-TX-31", status: "en_route", location: "Dallas · Sub DAL-03", lat: 32.78, lng: -96.80, personnel: 6, eta: "2h 15m" },
-  { id: "CREW-NY-05", status: "standby", location: "NYC · Sub NYC-01", lat: 40.71, lng: -74.01, personnel: 4 },
-];
-
-const DEFAULT_EVENTS: EventData[] = [
-  { id: "e1", icon: "🔴", timestamp: "14:32:07", title: "ERCOT Issues Grid Emergency Alert", description: "Stage 2 emergency. Load shedding within 4 hours.", severity: "critical", lat: 30.27, lng: -97.74 },
-  { id: "e2", icon: "⚡", timestamp: "14:30:44", title: "Crew TX-22 Deployed to Austin", description: "8-person crew on site at Austin metro.", severity: "info", lat: 30.27, lng: -97.74 },
-  { id: "e3", icon: "⚠️", timestamp: "14:28:12", title: "Substation WTX-04 at 94% Load", description: "West Texas approaching capacity. Crew on site.", severity: "warning", lat: 31.5, lng: -100.4 },
-  { id: "e4", icon: "🌡️", timestamp: "14:25:33", title: "Temperature Drop Accelerating", description: "Austin: -2°F by midnight. Heating demand +18%.", severity: "warning", lat: 30.27, lng: -97.74 },
-  { id: "e5", icon: "⚡", timestamp: "14:22:01", title: "Cascade Simulation Updated", description: "New probability: 73% (↑ from 68%). 14 substations at risk.", severity: "critical" },
-  { id: "e6", icon: "✅", timestamp: "14:18:45", title: "Crew TX-08 Dispatched to Houston", description: "5-person crew en route. ETA 1h 30m.", severity: "success", lat: 29.76, lng: -95.37 },
-  { id: "e7", icon: "⚠️", timestamp: "14:15:20", title: "Wind Generation Dropping", description: "West TX wind farms declining 40% by midnight.", severity: "warning", lat: 31.5, lng: -100.4 },
-  { id: "e8", icon: "🟢", timestamp: "14:10:00", title: "Northeast Grid Nominal", description: "PJM/NYISO within normal range.", severity: "success", lat: 40.71, lng: -74.01 },
-];
-
-const EXTRA_EVENTS: Omit<EventData, "id">[] = [
-  { icon: "⚠️", timestamp: "", title: "Substation ATX-12 Load Rising: 87%", description: "Austin substation approaching threshold.", severity: "warning", lat: 30.27, lng: -97.74 },
-  { icon: "🔴", timestamp: "", title: "ERCOT Price Spike: $180/MWh", description: "Real-time pricing surged past $180.", severity: "critical" },
-  { icon: "✅", timestamp: "", title: "Crew TX-14 Reports Line Repair Complete", description: "West Texas line TL-7 restored to service.", severity: "success", lat: 31.5, lng: -100.4 },
-  { icon: "⚡", timestamp: "", title: "Battery Storage Reserves Engaged", description: "450 MW battery dispatch across ERCOT.", severity: "info" },
-  { icon: "⚠️", timestamp: "", title: "Solar Output Declining Faster Than Forecast", description: "Cloud cover reducing generation by 22%.", severity: "warning" },
-];
 
 /* ================================================================== */
 /*  CONSTANTS                                                          */
@@ -177,17 +148,30 @@ function EventRow({
 /* ================================================================== */
 /*  MAIN COMPONENT                                                     */
 /* ================================================================== */
+const SEVERITY_ICONS: Record<string, string> = {
+  critical: "🔴",
+  emergency: "🔴",
+  warning: "⚠️",
+  info: "⚡",
+  success: "✅",
+};
+
 export default function OperatorRightSidebar({
-  crews = DEFAULT_CREWS,
-  events: initialEvents = DEFAULT_EVENTS,
-  crewCoverage = 76,
+  crews = [],
+  events: initialEvents = [],
+  crewCoverage = 0,
+  scenario,
   onFocusLocation,
 }: OperatorRightSidebarProps) {
   const [activeTab, setActiveTab] = useState<"crews" | "feed">("crews");
   const [events, setEvents] = useState(initialEvents);
   const [newestId, setNewestId] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  const extraIndex = useRef(0);
+
+  // Sync initial events from parent when they change
+  useEffect(() => {
+    if (initialEvents.length > 0) setEvents(initialEvents);
+  }, [initialEvents]);
 
   // Crew counts
   const deployed = crews.filter((c) => c.status === "deployed").length;
@@ -195,42 +179,55 @@ export default function OperatorRightSidebar({
   const standby = crews.filter((c) => c.status === "standby").length;
   const total = crews.length;
 
-  // Live event injection
+  // SSE real-time event stream from backend
   useEffect(() => {
-    const interval = setInterval(() => {
-      const extra = EXTRA_EVENTS[extraIndex.current % EXTRA_EVENTS.length];
-      extraIndex.current += 1;
+    if (!scenario) return;
 
-      const now = new Date();
-      const ts = now.toLocaleTimeString("en-US", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-      const newEvent: EventData = {
-        ...extra,
-        id: `live-${Date.now()}`,
-        timestamp: ts,
-      };
+    const es = new EventSource(`/api/backend/utility/events/stream?scenario=${scenario}`);
 
-      setEvents((prev) => [newEvent, ...prev].slice(0, 20));
-      setNewestId(newEvent.id);
-      setHighlightedId(newEvent.id);
+    es.onmessage = (msg) => {
+      try {
+        const data = JSON.parse(msg.data);
+        if (data.done) {
+          es.close();
+          return;
+        }
 
-      // Clear glow after 3s
-      setTimeout(() => {
-        setNewestId((cur) => (cur === newEvent.id ? null : cur));
-      }, 3000);
+        const sev = data.severity === "emergency" ? "critical" : (data.severity as EventData["severity"]);
+        const totalMin = data.timestamp_offset_minutes ?? 0;
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
 
-      // Clear highlight after 5s
-      setTimeout(() => {
-        setHighlightedId((cur) => (cur === newEvent.id ? null : cur));
-      }, 5000);
-    }, 10_000);
+        const newEvent: EventData = {
+          id: data.event_id ?? `sse-${Date.now()}`,
+          icon: SEVERITY_ICONS[data.severity] ?? "⚡",
+          timestamp: `T+${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+          title: data.title,
+          description: data.description,
+          severity: sev || "info",
+        };
 
-    return () => clearInterval(interval);
-  }, []);
+        setEvents((prev) => [newEvent, ...prev].slice(0, 30));
+        setNewestId(newEvent.id);
+        setHighlightedId(newEvent.id);
+
+        setTimeout(() => {
+          setNewestId((cur) => (cur === newEvent.id ? null : cur));
+        }, 3000);
+        setTimeout(() => {
+          setHighlightedId((cur) => (cur === newEvent.id ? null : cur));
+        }, 5000);
+      } catch {
+        // ignore parse errors
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+    };
+
+    return () => es.close();
+  }, [scenario]);
 
   const handleCrewFocus = useCallback(
     (crew: CrewData) => {

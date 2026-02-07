@@ -7,6 +7,7 @@ import OperatorGlobe from "@/components/OperatorGlobe";
 import OperatorRightSidebar from "@/components/OperatorRightSidebar";
 import CascadeOverlay from "@/components/CascadeOverlay";
 import OperatorEntryModal, { getRegionFromZip } from "@/components/OperatorEntryModal";
+import { useRealtimeSession } from "@/hooks/useRealtimeSession";
 import EiaDataPanel from "@/components/EiaDataPanel";
 import {
   fetchOverview,
@@ -472,6 +473,21 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
   const [isCascadeOpen, setIsCascadeOpen] = useState(false);
   const [isEiaOpen, setIsEiaOpen] = useState(false);
 
+  /* ---- Realtime session ---- */
+  const { session: liveSession, isActive: isSimActive } = useRealtimeSession();
+
+  const handleRunSimulation = useCallback(async () => {
+    setIsCascadeOpen(true);
+    try {
+      await fetch(
+        `/api/backend/orchestrate/run?scenario=${scenario}&forecast_hour=36&grid_region=ERCOT`,
+        { method: "POST" }
+      );
+    } catch (err) {
+      console.error("Failed to start orchestrated simulation:", err);
+    }
+  }, [scenario]);
+
   /* ---- Fetch all data ---- */
   const loadData = useCallback(async (sc: string) => {
     setLoading(true);
@@ -523,10 +539,17 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
 
   /* ---- Derived data ---- */
   const gridHz = overview?.grid_frequency_hz ?? 60.0;
-  const gridStatus: GridStatus = overview ? mapGridStatus(overview.national_status) : "NOMINAL";
+  const liveHasFailures = liveSession && (liveSession.total_failed_nodes ?? 0) > 0;
+  const gridStatus: GridStatus = liveHasFailures
+    ? "CASCADE"
+    : overview
+      ? mapGridStatus(overview.national_status)
+      : "NOMINAL";
   const segments: RegionSegment[] = overview ? buildSegments(overview) : [];
   const threats: ThreatData[] = overview ? buildThreats(overview) : [];
-  const ercotProb = cascadeData?.probabilities["ERCOT"] ?? 0;
+  const ercotProb = liveHasFailures
+    ? Math.min(1, (liveSession!.total_failed_nodes! / 200))
+    : (cascadeData?.probabilities["ERCOT"] ?? 0);
   const tickerItems: TickerItem[] =
     overview ? buildTicker(overview, cascadeData, crews.length) : [];
 
@@ -547,7 +570,9 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
   const scenarioLabel =
     scenario === "uri"
       ? "Winter Storm Uri — Feb 13, 2021 T-48h"
-      : "Normal Operations — Feb 1, 2021";
+      : scenario === "live"
+        ? "Live AI Forecast — Real-Time Weather"
+        : "Normal Operations — Feb 1, 2021";
 
   return (
     <div className="h-screen w-screen bg-[#0a0a0a] flex flex-col overflow-hidden">
@@ -586,6 +611,18 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
             />
             <span className="text-xs font-mono text-[#22c55e]">LIVE SIMULATION</span>
           </div>
+
+          {liveSession && (
+            <span
+              className={`text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                liveSession.status === "completed"
+                  ? "text-[#22c55e] border-[#22c55e]/25 bg-[#22c55e]/[0.06]"
+                  : "text-[#f59e0b] border-[#f59e0b]/25 bg-[#f59e0b]/[0.06] animate-pulse"
+              }`}
+            >
+              {liveSession.status.replace(/_/g, " ")}
+            </span>
+          )}
         </div>
 
         <span className="text-sm font-mono text-[#a1a1aa] hidden md:block flex-shrink-0">
@@ -605,7 +642,7 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
         </button>
 
         <button
-          onClick={() => setIsCascadeOpen(true)}
+          onClick={handleRunSimulation}
           className="h-11 px-4 rounded-lg bg-[#22c55e] text-white text-sm font-semibold hover:bg-[#16a34a] transition-colors cursor-pointer flex-shrink-0"
         >
           Run Simulation
@@ -639,7 +676,11 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
           />
           <CascadeProbabilityCard
             probability={ercotProb}
-            totalLoad={overview.total_load_mw}
+            totalLoad={
+              liveSession?.total_load_shed_mw
+                ? overview.total_load_mw + liveSession.total_load_shed_mw
+                : overview.total_load_mw
+            }
             totalCapacity={overview.total_capacity_mw}
           />
         </aside>
@@ -664,6 +705,7 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
           crews={crews}
           events={events}
           crewCoverage={crewCoverage}
+          scenario={scenario}
           onFocusLocation={(loc) =>
             setFocusedLocation({
               lat: loc.lat,
@@ -683,6 +725,9 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
       <CascadeOverlay
         isOpen={isCascadeOpen}
         onClose={() => setIsCascadeOpen(false)}
+        scenario={scenarioLabel}
+        scenarioKey={scenario}
+        region="ERCOT"
       />
 
       {/* EIA Data Panel */}

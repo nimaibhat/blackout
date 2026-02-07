@@ -18,6 +18,7 @@ export interface CascadeOverlayProps {
   onClose: () => void;
   region?: string;
   scenario?: string;
+  scenarioKey?: string;
 }
 
 type NodeState = "healthy" | "stressed" | "overloaded" | "failed";
@@ -202,40 +203,14 @@ const CASCADE: { time: number; id: string; state: NodeState }[] = [
 ];
 
 /* ================================================================== */
-/*  IMPACT METRICS                                                     */
+/*  IMPACT METRIC TYPE                                                 */
 /* ================================================================== */
-const IMPACT_METRICS = [
-  {
-    label: "OUTAGE HOURS",
-    without: { value: 4800000, fmt: (n: number) => n.toLocaleString(), desc: "total outage-hours" },
-    withBo: { value: 2400000, fmt: (n: number) => n.toLocaleString(), desc: "50% reduction" },
-    delta: "↓ 50%",
-  },
-  {
-    label: "SUBSTATIONS FAILED",
-    without: { value: 14, fmt: (n: number) => n.toString(), desc: "cascading failure" },
-    withBo: { value: 3, fmt: (n: number) => n.toString(), desc: "isolated, cascade prevented" },
-    delta: "↓ 79%",
-  },
-  {
-    label: "PEAK PRICE",
-    without: { value: 9000, fmt: (n: number) => `$${n.toLocaleString()}/MWh`, desc: "market cap hit" },
-    withBo: { value: 180, fmt: (n: number) => `$${n.toLocaleString()}/MWh`, desc: "demand-responsive pricing" },
-    delta: "↓ 98%",
-  },
-  {
-    label: "LIVES IMPACTED",
-    without: { value: 246, fmt: (n: number) => `${n} deaths`, desc: "storm + grid failure" },
-    withBo: { value: 215, fmt: (n: number) => `~${n} saved`, desc: "early warning + pre-positioning" },
-    delta: "↓ 87%",
-  },
-  {
-    label: "AVG HOUSEHOLD SAVINGS",
-    without: { value: 0, fmt: () => "$0", desc: "no optimization" },
-    withBo: { value: 127, fmt: (n: number) => `$${n}`, desc: "automated load shifting" },
-    delta: "+$127",
-  },
-];
+interface ImpactMetric {
+  label: string;
+  without: { value: number; fmt: (n: number) => string; desc: string };
+  withBo: { value: number; fmt: (n: number) => string; desc: string };
+  delta: string;
+}
 
 /* ================================================================== */
 /*  STATE COLORS                                                       */
@@ -285,7 +260,7 @@ function MetricRow({
   rightActive,
   deltaActive,
 }: {
-  metric: (typeof IMPACT_METRICS)[0];
+  metric: ImpactMetric;
   index: number;
   leftActive: boolean;
   rightActive: boolean;
@@ -725,21 +700,67 @@ function CascadeSimulation({
 /* ================================================================== */
 /*  PHASE 2 — IMPACT ANALYSIS                                         */
 /* ================================================================== */
+function buildMetricsFromOutcomes(wo: { total_affected_customers: number; peak_price_mwh: number; blackout_duration_hours: number; cascade_steps: number; failed_nodes: number }, wi: { total_affected_customers: number; peak_price_mwh: number; blackout_duration_hours: number; cascade_steps: number; failed_nodes: number }, customersSaved: number, priceReductionPct: number, cascadeReductionPct: number): ImpactMetric[] {
+  const pctDelta = (a: number, b: number) => {
+    if (a === 0) return b > 0 ? `+${b}` : "—";
+    const pct = Math.round(((a - b) / a) * 100);
+    return pct > 0 ? `↓ ${pct}%` : pct < 0 ? `↑ ${Math.abs(pct)}%` : "—";
+  };
+
+  return [
+    {
+      label: "CUSTOMERS AFFECTED",
+      without: { value: wo.total_affected_customers, fmt: (n) => n.toLocaleString(), desc: "without early warning" },
+      withBo: { value: wi.total_affected_customers, fmt: (n) => n.toLocaleString(), desc: `${customersSaved.toLocaleString()} saved` },
+      delta: pctDelta(wo.total_affected_customers, wi.total_affected_customers),
+    },
+    {
+      label: "SUBSTATIONS FAILED",
+      without: { value: wo.failed_nodes, fmt: (n) => n.toString(), desc: "cascading failure" },
+      withBo: { value: wi.failed_nodes, fmt: (n) => n.toString(), desc: "isolated, cascade prevented" },
+      delta: pctDelta(wo.failed_nodes, wi.failed_nodes),
+    },
+    {
+      label: "PEAK PRICE",
+      without: { value: wo.peak_price_mwh, fmt: (n) => `$${n.toLocaleString()}/MWh`, desc: "market cap hit" },
+      withBo: { value: wi.peak_price_mwh, fmt: (n) => `$${Math.round(n).toLocaleString()}/MWh`, desc: "demand-responsive pricing" },
+      delta: `↓ ${Math.round(priceReductionPct)}%`,
+    },
+    {
+      label: "BLACKOUT DURATION",
+      without: { value: wo.blackout_duration_hours, fmt: (n) => `${n.toFixed(1)}h`, desc: "total blackout hours" },
+      withBo: { value: wi.blackout_duration_hours, fmt: (n) => `${n.toFixed(1)}h`, desc: "reduced via load management" },
+      delta: pctDelta(wo.blackout_duration_hours, wi.blackout_duration_hours),
+    },
+    {
+      label: "CASCADE DEPTH",
+      without: { value: wo.cascade_steps, fmt: (n) => `${n} steps`, desc: "cascade propagation" },
+      withBo: { value: wi.cascade_steps, fmt: (n) => `${n} steps`, desc: "early crew intervention" },
+      delta: `↓ ${Math.round(cascadeReductionPct)}%`,
+    },
+  ];
+}
+
 function ImpactAnalysis({
   active,
   region,
   scenario,
+  scenarioKey,
   onClose,
 }: {
   active: boolean;
   region: string;
   scenario: string;
+  scenarioKey?: string;
   onClose: () => void;
 }) {
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(false);
   const [showDelta, setShowDelta] = useState(false);
+  const [metrics, setMetrics] = useState<ImpactMetric[]>([]);
+  const [loadingOutcomes, setLoadingOutcomes] = useState(false);
 
+  // Fetch outcomes from backend when active
   useEffect(() => {
     if (!active) {
       setShowLeft(false);
@@ -747,15 +768,35 @@ function ImpactAnalysis({
       setShowDelta(false);
       return;
     }
-    const t1 = setTimeout(() => setShowLeft(true), 500);
-    const t2 = setTimeout(() => setShowRight(true), 1000);
-    const t3 = setTimeout(() => setShowDelta(true), 1500);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [active]);
+
+    const key = scenarioKey || "uri";
+    setLoadingOutcomes(true);
+
+    fetch(`/api/backend/utility/outcomes?scenario=${key}`)
+      .then((r) => r.json())
+      .then((res) => {
+        const data = res.data;
+        if (data?.without_blackout && data?.with_blackout) {
+          setMetrics(
+            buildMetricsFromOutcomes(
+              data.without_blackout,
+              data.with_blackout,
+              data.customers_saved,
+              data.price_reduction_pct,
+              data.cascade_reduction_pct,
+            )
+          );
+        }
+      })
+      .catch((err) => console.error("Failed to fetch outcomes:", err))
+      .finally(() => {
+        setLoadingOutcomes(false);
+        // Stagger reveal animations
+        setTimeout(() => setShowLeft(true), 500);
+        setTimeout(() => setShowRight(true), 1000);
+        setTimeout(() => setShowDelta(true), 1500);
+      });
+  }, [active, scenarioKey]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.06) transparent" }}>
@@ -763,52 +804,63 @@ function ImpactAnalysis({
       <div className="mb-6 flex-shrink-0">
         <h2 className="text-2xl font-bold text-white">Impact Analysis</h2>
         <p className="text-sm text-[#a1a1aa] mt-1">
-          {scenario} &mdash; Feb 2021 &mdash; {region}
+          {scenario} &mdash; {region}
         </p>
       </div>
 
-      {/* Column headers */}
-      <div className="flex items-stretch gap-4 mb-6 flex-shrink-0">
-        <motion.div
-          animate={{ opacity: showLeft ? 1 : 0.3, x: showLeft ? 0 : -20 }}
-          transition={{ duration: 0.5 }}
-          className="flex-1 border-t-4 border-[#ef4444] rounded-xl p-5 bg-[rgba(239,68,68,0.03)]"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{"\u274C"}</span>
-            <span className="text-xl font-bold text-[#ef4444]">
-              WITHOUT BLACKOUT
-            </span>
+      {loadingOutcomes ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="w-4 h-4 rounded-full bg-[#22c55e] mx-auto animate-pulse shadow-[0_0_20px_rgba(34,197,94,0.4)]" />
+            <p className="text-sm font-mono text-[#52525b]">Computing impact analysis...</p>
           </div>
-        </motion.div>
-        <div className="w-[80px] flex-shrink-0" />
-        <motion.div
-          animate={{ opacity: showRight ? 1 : 0.3, x: showRight ? 0 : 20 }}
-          transition={{ duration: 0.5 }}
-          className="flex-1 border-t-4 border-[#22c55e] rounded-xl p-5 bg-[rgba(34,197,94,0.03)]"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{"\u2705"}</span>
-            <span className="text-xl font-bold text-[#22c55e]">
-              WITH BLACKOUT
-            </span>
+        </div>
+      ) : (
+        <>
+          {/* Column headers */}
+          <div className="flex items-stretch gap-4 mb-6 flex-shrink-0">
+            <motion.div
+              animate={{ opacity: showLeft ? 1 : 0.3, x: showLeft ? 0 : -20 }}
+              transition={{ duration: 0.5 }}
+              className="flex-1 border-t-4 border-[#ef4444] rounded-xl p-5 bg-[rgba(239,68,68,0.03)]"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{"\u274C"}</span>
+                <span className="text-xl font-bold text-[#ef4444]">
+                  WITHOUT BLACKOUT
+                </span>
+              </div>
+            </motion.div>
+            <div className="w-[80px] flex-shrink-0" />
+            <motion.div
+              animate={{ opacity: showRight ? 1 : 0.3, x: showRight ? 0 : 20 }}
+              transition={{ duration: 0.5 }}
+              className="flex-1 border-t-4 border-[#22c55e] rounded-xl p-5 bg-[rgba(34,197,94,0.03)]"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{"\u2705"}</span>
+                <span className="text-xl font-bold text-[#22c55e]">
+                  WITH BLACKOUT
+                </span>
+              </div>
+            </motion.div>
           </div>
-        </motion.div>
-      </div>
 
-      {/* Metric rows */}
-      <div className="space-y-4 mb-8 flex-shrink-0">
-        {IMPACT_METRICS.map((m, i) => (
-          <MetricRow
-            key={m.label}
-            metric={m}
-            index={i}
-            leftActive={showLeft}
-            rightActive={showRight}
-            deltaActive={showDelta}
-          />
-        ))}
-      </div>
+          {/* Metric rows */}
+          <div className="space-y-4 mb-8 flex-shrink-0">
+            {metrics.map((m, i) => (
+              <MetricRow
+                key={m.label}
+                metric={m}
+                index={i}
+                leftActive={showLeft}
+                rightActive={showRight}
+                deltaActive={showDelta}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div className="flex flex-col items-center gap-3 mt-auto pb-4 flex-shrink-0">
@@ -835,6 +887,7 @@ export default function CascadeOverlay({
   onClose,
   region = "ERCOT",
   scenario = "Winter Storm Uri",
+  scenarioKey,
 }: CascadeOverlayProps) {
   const [activeTab, setActiveTab] = useState<"simulation" | "analysis">(
     "simulation"
@@ -924,6 +977,7 @@ export default function CascadeOverlay({
                 active={activeTab === "analysis"}
                 region={region}
                 scenario={scenario}
+                scenarioKey={scenarioKey}
                 onClose={onClose}
               />
             )}

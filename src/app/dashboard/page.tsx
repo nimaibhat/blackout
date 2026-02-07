@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AlertsPanel, { type AlertData } from "@/components/AlertsPanel";
 import { supabase } from "@/lib/supabase";
-import type { HourlyPrice } from "@/lib/api";
+import { useRealtimeAlerts, type LiveAlert } from "@/hooks/useRealtimeAlerts";
+import { fetchRecommendations, type HourlyPrice, type ConsumerRecommendation } from "@/lib/api";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -127,6 +128,36 @@ function mapSupabaseRow(row: any): DashboardProfile {
     nextRiskWindow: nextRiskShort,
     smartActions: (row.smart_actions ?? []).length,
     estSavings: Number(row.estimated_savings_dollars) || 0,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Map LiveAlert → AlertData                                          */
+/* ------------------------------------------------------------------ */
+const LIVE_SEVERITY_MAP: Record<string, AlertData["severity"]> = {
+  critical: "critical",
+  warning: "warning",
+  optimization: "optimization",
+};
+
+function mapLiveAlert(la: LiveAlert): AlertData {
+  const severity = LIVE_SEVERITY_MAP[la.severity] ?? "warning";
+  const ago = Math.max(
+    0,
+    Math.round((Date.now() - new Date(la.created_at).getTime()) / 60000)
+  );
+  return {
+    id: la.id,
+    severity,
+    title: la.title,
+    description: la.description,
+    timestamp: ago === 0 ? "just now" : `${ago}m ago`,
+    action:
+      severity === "optimization"
+        ? { label: "Accept →", variant: "primary" }
+        : severity === "critical"
+          ? { label: "View Details →", variant: "primary" }
+          : undefined,
   };
 }
 
@@ -655,8 +686,16 @@ function DashboardContent() {
   const [priceData, setPriceData] = useState<HourlyPrice[]>([]);
   const [priceLoading, setPriceLoading] = useState(true);
   const [alerts, setAlerts] = useState<AlertData[]>([]);
+  const [recommendation, setRecommendation] = useState<ConsumerRecommendation | null>(null);
   const time = useCurrentTime();
-  const savingsHistory = [8.4, 9.1, 11.3, 10.8, 12.5, 13.1, 14.2];
+
+  // Build savings history from optimized_schedule or use defaults
+  const savingsHistory = recommendation?.optimized_schedule?.length
+    ? recommendation.optimized_schedule.map((s) => s.savings)
+    : [8.4, 9.1, 11.3, 10.8, 12.5, 13.1, 14.2];
+
+  // Realtime live alerts from orchestrated simulations
+  const { liveAlerts } = useRealtimeAlerts(profile.gridRegion);
 
   // Fetch profile from Supabase
   useEffect(() => {
@@ -676,6 +715,28 @@ function DashboardContent() {
         setLoading(false);
       });
   }, [profileId]);
+
+  // Fetch backend recommendations after profile loads
+  useEffect(() => {
+    const id = profileId || "martinez-family";
+    fetchRecommendations(id, profile.gridRegion)
+      .then((rec) => {
+        setRecommendation(rec);
+        // Override profile fields with backend-computed values
+        setProfile((prev) => ({
+          ...prev,
+          readinessScore: rec.readiness_score ?? prev.readinessScore,
+          status: (rec.status === "PROTECTED" ? "PROTECTED"
+            : rec.status === "AT_RISK" ? "AT RISK"
+            : "MONITORING") as DashboardProfile["status"],
+          estSavings: rec.total_savings ?? prev.estSavings,
+          nextRiskWindow: rec.next_risk_window
+            ? rec.next_risk_window.split("–")[0]?.trim() || rec.next_risk_window
+            : prev.nextRiskWindow,
+        }));
+      })
+      .catch((err) => console.error("Failed to fetch recommendations:", err));
+  }, [profileId, profile.gridRegion]);
 
   // Fetch price forecast + smart alerts
   useEffect(() => {
@@ -723,12 +784,23 @@ function DashboardContent() {
     [profileId]
   );
 
-  // Countdown to next risk window (mock: 36h 14m from now)
-  const [countdown, setCountdown] = useState("36h 14m");
+  // Countdown to next risk — derive from price spike in forecast data
+  const [countdown, setCountdown] = useState("—");
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    let totalMinutes = 36 * 60 + 14;
+    // Find first price spike (>$0.25/kWh) in forecast
+    const spikeHour = priceData.find((p) => p.consumer_price_kwh > 0.25)?.hour;
+    let totalMinutes = spikeHour != null ? spikeHour * 60 : 36 * 60 + 14;
+
+    const fmt = (mins: number) => {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${h}h ${m}m`;
+    };
+    setCountdown(fmt(totalMinutes));
+
+    if (countdownRef.current) clearInterval(countdownRef.current);
     countdownRef.current = setInterval(() => {
       totalMinutes -= 1;
       if (totalMinutes <= 0) {
@@ -736,14 +808,12 @@ function DashboardContent() {
         if (countdownRef.current) clearInterval(countdownRef.current);
         return;
       }
-      const h = Math.floor(totalMinutes / 60);
-      const m = totalMinutes % 60;
-      setCountdown(`${h}h ${m}m`);
+      setCountdown(fmt(totalMinutes));
     }, 60_000);
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, []);
+  }, [priceData]);
 
   if (loading) {
     return (
@@ -891,7 +961,11 @@ function DashboardContent() {
         {/* ---------------------------------------------------------- */}
         <div className="grid grid-cols-1 gap-6">
           <AlertsPanel
-            alerts={alerts.length > 0 ? alerts : undefined}
+            alerts={
+              liveAlerts.length > 0 || alerts.length > 0
+                ? [...liveAlerts.map(mapLiveAlert), ...alerts]
+                : undefined
+            }
             onAction={handleAlertAction}
           />
         </div>

@@ -178,3 +178,72 @@ export async function fetchPrices(region: string, scenario: string, mode?: strin
   );
   return res.data.prices;
 }
+
+/* ================================================================== */
+/*  OUTCOMES                                                           */
+/* ================================================================== */
+export interface ScenarioOutcome {
+  scenario_name: string;
+  total_affected_customers: number;
+  peak_price_mwh: number;
+  blackout_duration_hours: number;
+  regions_affected: number;
+  cascade_steps: number;
+  failed_nodes: number;
+}
+
+export interface OutcomeComparison {
+  without_blackout: ScenarioOutcome;
+  with_blackout: ScenarioOutcome;
+  customers_saved: number;
+  price_reduction_pct: number;
+  cascade_reduction_pct: number;
+}
+
+export async function fetchOutcomes(scenario: string): Promise<OutcomeComparison> {
+  const res = await get<{ data: OutcomeComparison }>(
+    `/utility/outcomes?scenario=${scenario}`
+  );
+  return res.data;
+}
+
+/* ================================================================== */
+/*  CONSUMER RECOMMENDATIONS                                           */
+/* ================================================================== */
+export interface OptimizedSchedule {
+  appliance: string;
+  original_start: number;
+  optimized_start: number;
+  original_cost: number;
+  optimized_cost: number;
+  savings: number;
+  reason: string;
+}
+
+export interface ConsumerAlert {
+  severity: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  action: string;
+}
+
+export interface ConsumerRecommendation {
+  optimized_schedule: OptimizedSchedule[];
+  total_savings: number;
+  readiness_score: number;
+  status: string;
+  alerts: ConsumerAlert[];
+  next_risk_window: string | null;
+}
+
+export async function fetchRecommendations(
+  profileId: string,
+  region = "ERCOT",
+  scenario = "normal"
+): Promise<ConsumerRecommendation> {
+  const res = await get<{ data: ConsumerRecommendation }>(
+    `/consumer/recommendations/${profileId}?region=${region}&scenario=${scenario}`
+  );
+  return res.data;
+}
