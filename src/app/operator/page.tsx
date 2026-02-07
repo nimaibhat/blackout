@@ -6,8 +6,10 @@ import Link from "next/link";
 import OperatorGlobe from "@/components/OperatorGlobe";
 import OperatorRightSidebar from "@/components/OperatorRightSidebar";
 import CascadeOverlay from "@/components/CascadeOverlay";
+import CascadeControlBar from "@/components/CascadeControlBar";
 import OperatorEntryModal, { getRegionFromZip } from "@/components/OperatorEntryModal";
 import { useRealtimeSession } from "@/hooks/useRealtimeSession";
+import { useCascadeAnimation } from "@/hooks/useCascadeAnimation";
 import {
   fetchOverview,
   fetchHotspots,
@@ -17,18 +19,20 @@ import {
   fetchEvents,
   fetchGridNodes,
   fetchWeatherEvents,
+  runCascadeSimulation,
   type OverviewData,
   type RegionWeather,
   type WeatherEvent,
   type Hotspot,
   type Arc,
   type CascadeProbability,
+  type CascadeResult,
   type Crew,
   type TimelineEvent,
   type GridNodeData,
   type GridEdgeData,
 } from "@/lib/api";
-import type { HotspotData, ArcData, GridNode } from "@/components/OperatorGlobe";
+import type { HotspotData, ArcData, GridNode, CrewMarker } from "@/components/OperatorGlobe";
 import type { CrewData, EventData } from "@/components/OperatorRightSidebar";
 
 /* ================================================================== */
@@ -560,6 +564,11 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
   const [gridNodes, setGridNodes] = useState<GridNode[]>([]);
   const [gridEdges, setGridEdges] = useState<GridEdgeData[]>([]);
   const [weatherEvents, setWeatherEvents] = useState<WeatherEvent[]>([]);
+  const [rawCrews, setRawCrews] = useState<import("@/lib/api").Crew[]>([]);
+
+  /* ---- Map cascade animation state ---- */
+  const [mapCascadeData, setMapCascadeData] = useState<CascadeResult | null>(null);
+  const [showMapCascade, setShowMapCascade] = useState(false);
 
   /* ---- UI state ---- */
   const [focusedLocation, setFocusedLocation] = useState<FocusedLocation | null>(null);
@@ -569,15 +578,25 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
   /* ---- Realtime session ---- */
   const { session: liveSession, isActive: isSimActive } = useRealtimeSession();
 
+  /* ---- Cascade animation hook ---- */
+  const cascade = useCascadeAnimation(showMapCascade ? mapCascadeData : null);
+
   const handleRunSimulation = useCallback(async () => {
-    setIsCascadeOpen(true);
+    // Start map cascade animation + orchestration in parallel
+    setShowMapCascade(true);
+
     try {
-      await fetch(
-        `/api/backend/orchestrate/run?scenario=${scenario}&forecast_hour=36&grid_region=ERCOT`,
-        { method: "POST" }
-      );
+      const [cascadeResult] = await Promise.all([
+        runCascadeSimulation(scenario, 36),
+        fetch(
+          `/api/backend/orchestrate/run?scenario=${scenario}&forecast_hour=36&grid_region=ERCOT`,
+          { method: "POST" }
+        ).catch((err) => console.error("Orchestration failed:", err)),
+      ]);
+      setMapCascadeData(cascadeResult);
     } catch (err) {
-      console.error("Failed to start orchestrated simulation:", err);
+      console.error("Failed to run cascade simulation:", err);
+      setShowMapCascade(false);
     }
   }, [scenario]);
 
@@ -598,6 +617,7 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
       setArcs(mapArcs(ar));
       setCascadeData(cp);
       setCrews(mapCrews(cr.crews));
+      setRawCrews(cr.crews);
       setCrewCoverage(cr.coverage_pct);
       setEvents(mapEvents(ev));
 
@@ -634,6 +654,16 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
     },
     [loadData]
   );
+
+  /* ---- Crew markers for globe ---- */
+  const crewMarkers: CrewMarker[] = rawCrews.map((c) => ({
+    id: c.crew_id,
+    lat: c.lat,
+    lng: c.lon,
+    status: c.status,
+    label: c.name,
+    specialty: c.specialty.replace(/_/g, " "),
+  }));
 
   /* ---- Derived data ---- */
   const gridHz = overview?.grid_frequency_hz ?? 60.0;
@@ -785,13 +815,33 @@ export default function OperatorPage({ children }: { children?: ReactNode }) {
             arcs={arcs}
             gridNodes={gridNodes}
             gridEdges={gridEdges}
+            crews={crewMarkers}
             focusedLocation={focusedLocation}
+            cascadeState={
+              showMapCascade
+                ? {
+                    failedNodeIds: cascade.failedNodeIds,
+                    rerouteArcs: cascade.activeReroutes,
+                  }
+                : null
+            }
             onSelectCity={(city) => setFocusedThreatId(city.id)}
             onDeselectCity={() => {
               setFocusedThreatId(null);
               setFocusedLocation(null);
             }}
           />
+
+          {/* Cascade control bar */}
+          {showMapCascade && mapCascadeData && (
+            <CascadeControlBar
+              {...cascade}
+              onClose={() => {
+                setShowMapCascade(false);
+                setMapCascadeData(null);
+              }}
+            />
+          )}
         </main>
 
         {/* ---- RIGHT SIDEBAR ---- */}

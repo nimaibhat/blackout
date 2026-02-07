@@ -7,10 +7,11 @@ import { useSearchParams } from "next/navigation";
 import AlertsPanel, { type AlertData } from "@/components/AlertsPanel";
 import EnhancedSmartDevicesPanel from "@/components/EnhancedSmartDevicesPanel";
 import XRPLWalletPanel from "@/components/XRPLWalletPanel";
+import PriceForecastChart from "@/components/PriceForecastChart";
 import { supabase } from "@/lib/supabase";
 import { useRealtimeAlerts, type LiveAlert } from "@/hooks/useRealtimeAlerts";
 import { useRealtimeSession } from "@/hooks/useRealtimeSession";
-import { fetchRecommendations, type HourlyPrice, type ConsumerRecommendation } from "@/lib/api";
+import { fetchRecommendations, fetchPrices, type HourlyPrice, type ConsumerRecommendation } from "@/lib/api";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -365,231 +366,6 @@ function SeverityBadge({ severity }: { severity: number }) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Price Forecast Chart (48-hour SVG sparkline)                       */
-/* ------------------------------------------------------------------ */
-function PriceForecastChart({
-  prices,
-  loading,
-}: {
-  prices: HourlyPrice[];
-  loading: boolean;
-}) {
-  if (loading) {
-    return (
-      <div className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-6 min-h-[280px] flex items-center justify-center">
-        <span className="text-sm font-mono text-white/30 animate-pulse">
-          loading forecast...
-        </span>
-      </div>
-    );
-  }
-
-  if (!prices.length) {
-    return (
-      <div className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-6 min-h-[280px] flex items-center justify-center">
-        <span className="text-sm text-[#555] font-mono">
-          Price forecast unavailable
-        </span>
-      </div>
-    );
-  }
-
-  const W = 600;
-  const H = 180;
-  const PAD_X = 40;
-  const PAD_Y = 24;
-
-  const kwhPrices = prices.map((p) => p.consumer_price_kwh);
-  const maxP = Math.max(...kwhPrices, 0.3);
-  const minP = Math.min(...kwhPrices, 0);
-  const range = maxP - minP || 0.1;
-
-  const toX = (i: number) =>
-    PAD_X + (i / (prices.length - 1)) * (W - PAD_X * 2);
-  const toY = (v: number) =>
-    PAD_Y + (1 - (v - minP) / range) * (H - PAD_Y * 2);
-
-  // Build the main line path
-  const linePath = prices
-    .map((p, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(p.consumer_price_kwh).toFixed(1)}`)
-    .join(" ");
-
-  // Gradient fill area
-  const areaPath =
-    linePath +
-    ` L${toX(prices.length - 1).toFixed(1)},${(H - PAD_Y).toFixed(1)}` +
-    ` L${PAD_X.toFixed(1)},${(H - PAD_Y).toFixed(1)} Z`;
-
-  // Spike regions (>$0.25) and valley regions (<$0.08)
-  const spikeRects: { x: number; w: number }[] = [];
-  const valleyRects: { x: number; w: number }[] = [];
-
-  let spikeStart: number | null = null;
-  let valleyStart: number | null = null;
-
-  for (let i = 0; i < prices.length; i++) {
-    const kwh = prices[i].consumer_price_kwh;
-    if (kwh > 0.25) {
-      if (spikeStart === null) spikeStart = i;
-    } else if (spikeStart !== null) {
-      spikeRects.push({ x: toX(spikeStart), w: toX(i) - toX(spikeStart) });
-      spikeStart = null;
-    }
-    if (kwh < 0.08) {
-      if (valleyStart === null) valleyStart = i;
-    } else if (valleyStart !== null) {
-      valleyRects.push({ x: toX(valleyStart), w: toX(i) - toX(valleyStart) });
-      valleyStart = null;
-    }
-  }
-  if (spikeStart !== null)
-    spikeRects.push({ x: toX(spikeStart), w: toX(prices.length - 1) - toX(spikeStart) });
-  if (valleyStart !== null)
-    valleyRects.push({ x: toX(valleyStart), w: toX(prices.length - 1) - toX(valleyStart) });
-
-  // Stats
-  const avg = kwhPrices.reduce((a, b) => a + b, 0) / kwhPrices.length;
-  const peak = Math.max(...kwhPrices);
-  const low = Math.min(...kwhPrices);
-
-  // Y-axis labels
-  const yTicks = [minP, minP + range * 0.33, minP + range * 0.66, maxP];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.25 }}
-      className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-6 min-h-[280px]"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-white">
-          48-Hour Price Forecast
-        </h3>
-        <div className="flex items-center gap-4 text-xs font-mono">
-          <span className="text-[#a1a1aa]">
-            Avg <span className="text-white">${avg.toFixed(2)}</span>
-          </span>
-          <span className="text-[#ef4444]">
-            Peak <span className="text-white">${peak.toFixed(2)}</span>
-          </span>
-          <span className="text-[#22c55e]">
-            Low <span className="text-white">${low.toFixed(2)}</span>
-          </span>
-        </div>
-      </div>
-
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full h-auto"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <defs>
-          <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-
-        {/* Y-axis grid lines + labels */}
-        {yTicks.map((v, i) => (
-          <g key={i}>
-            <line
-              x1={PAD_X}
-              y1={toY(v)}
-              x2={W - PAD_X}
-              y2={toY(v)}
-              stroke="#1a1a1a"
-              strokeWidth="1"
-            />
-            <text
-              x={PAD_X - 4}
-              y={toY(v) + 3}
-              textAnchor="end"
-              className="text-[8px] fill-[#52525b]"
-            >
-              ${v.toFixed(2)}
-            </text>
-          </g>
-        ))}
-
-        {/* Spike regions (red) */}
-        {spikeRects.map((r, i) => (
-          <rect
-            key={`spike-${i}`}
-            x={r.x}
-            y={PAD_Y}
-            width={Math.max(r.w, 2)}
-            height={H - PAD_Y * 2}
-            fill="rgba(239,68,68,0.08)"
-          />
-        ))}
-
-        {/* Valley regions (green) */}
-        {valleyRects.map((r, i) => (
-          <rect
-            key={`valley-${i}`}
-            x={r.x}
-            y={PAD_Y}
-            width={Math.max(r.w, 2)}
-            height={H - PAD_Y * 2}
-            fill="rgba(34,197,94,0.08)"
-          />
-        ))}
-
-        {/* Area fill */}
-        <path d={areaPath} fill="url(#priceGrad)" />
-
-        {/* Line */}
-        <path
-          d={linePath}
-          fill="none"
-          stroke="#22c55e"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-
-        {/* X-axis hour labels (every 6 hours) */}
-        {prices
-          .filter((_, i) => i % 6 === 0)
-          .map((p, i) => (
-            <text
-              key={i}
-              x={toX(p.hour)}
-              y={H - 4}
-              textAnchor="middle"
-              className="text-[8px] fill-[#52525b]"
-            >
-              {p.hour % 24 === 0
-                ? "12a"
-                : p.hour % 24 < 12
-                  ? `${p.hour % 24}a`
-                  : p.hour % 24 === 12
-                    ? "12p"
-                    : `${(p.hour % 24) - 12}p`}
-            </text>
-          ))}
-      </svg>
-
-      {/* Legend */}
-      <div className="flex items-center gap-4 mt-3 text-[10px] text-[#71717a]">
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-[rgba(239,68,68,0.3)]" />
-          Spike (&gt;$0.25)
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-sm bg-[rgba(34,197,94,0.3)]" />
-          Valley (&lt;$0.08)
-        </span>
-        <span className="ml-auto font-mono text-[#52525b]">$/kWh</span>
-      </div>
-    </motion.div>
-  );
-}
-
 /* SmartDevicesPanel — replaced by EnhancedSmartDevicesPanel component */
 
 /* ------------------------------------------------------------------ */
@@ -717,19 +493,30 @@ function DashboardContent() {
   // Fetch price forecast + smart alerts — re-runs when scenario changes
   useEffect(() => {
     setPriceLoading(true);
-    const alertUrl = `/api/alerts?profileId=${profileId}&scenario=${scenario}`;
 
+    // Fetch prices directly from backend (client-side, reliable)
+    fetchPrices(profile.gridRegion, scenario)
+      .then((prices) => {
+        if (prices.length) setPriceData(prices);
+      })
+      .catch((err) => console.error("Failed to fetch prices:", err))
+      .finally(() => setPriceLoading(false));
+
+    // Fetch alerts separately (may also return prices, but don't depend on it)
+    const alertUrl = `/api/alerts?profileId=${profileId}&scenario=${scenario}`;
     fetch(alertUrl)
       .then((r) => r.json())
       .then((data) => {
         if (data.ok) {
-          if (data.prices?.length) setPriceData(data.prices);
           if (data.alerts?.length) setAlerts(data.alerts);
+          // Use alert prices as fallback if direct fetch failed
+          if (data.prices?.length) {
+            setPriceData((prev) => (prev.length ? prev : data.prices));
+          }
         }
       })
-      .catch((err) => console.error("Failed to fetch alerts:", err))
-      .finally(() => setPriceLoading(false));
-  }, [profileId, scenario]);
+      .catch((err) => console.error("Failed to fetch alerts:", err));
+  }, [profileId, scenario, profile.gridRegion]);
 
   // Handle alert accept action
   const handleAlertAction = useCallback(

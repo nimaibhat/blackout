@@ -494,9 +494,14 @@ export async function generatePriceAlerts(
   _alertIdCounter = 0;
 
   // Fetch 48-hour price forecast from backend
+  // Use absolute URL since this runs server-side in API routes
   let prices: HourlyPrice[];
   try {
-    prices = await fetchPrices(region, scenario);
+    const backendUrl = `http://127.0.0.1:8000/api/forecast/prices/${encodeURIComponent(region)}?scenario=${encodeURIComponent(scenario)}`;
+    const res = await fetch(backendUrl);
+    if (!res.ok) throw new Error(`Backend ${res.status}`);
+    const json = await res.json();
+    prices = json.data?.prices ?? [];
   } catch {
     // Backend unavailable — return empty
     return { alerts: [], actions: [], prices: [], ruleAnalysis: [] };
