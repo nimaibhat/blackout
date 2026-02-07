@@ -89,3 +89,16 @@ api/
 | POST | `/api/consumer/profiles/custom` | Create custom consumer profile |
 | GET | `/api/utility/crew-optimization` | Optimal crew positioning by region |
 | GET | `/health` | Health check |
+
+## Mock data (Next.js API routes)
+
+When the Next.js app is running (`npm run dev`), it exposes mock APIs that mirror real grid data sources. The backend can use these for development by setting `NEXT_MOCK_API_BASE=http://localhost:3000` in `.env` and calling them from services.
+
+| Source | Next.js route | Format | Granularity |
+|--------|----------------|--------|-------------|
+| Historical demand (EIA Open Data) | `GET /api/data/historical-demand?region=CISO&hours=168` | JSON | Hourly by region |
+| Wholesale prices (ERCOT) | `GET /api/data/wholesale-prices/ercot?node_id=HB_HOUSTON&intervals=96&format=json\|csv` | JSON or CSV | 15-min |
+| Wholesale prices (CAISO OASIS) | `GET /api/data/wholesale-prices/caiso?node_id=LAPLMG1_7_B2&intervals=288&format=json\|csv` | JSON or CSV | 5-min |
+| Wholesale prices (PJM Data Miner) | `GET /api/data/wholesale-prices/pjm?node_id=PJM-RTO&hours=168&format=json\|csv` | JSON or CSV | Hourly |
+
+Query params: `region` (EIA: CISO, ERCO, PJM, MISO, NYIS, ISNE, SWPP), `hours`/`intervals`, `end_time` (ISO 8601), `format=csv` for CSV responses.
