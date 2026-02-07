@@ -33,14 +33,6 @@ const SCENARIOS = [
     badgeColor: "text-[#22c55e]/70",
     icon: "🟢",
   },
-  {
-    id: "live",
-    label: "live weather forecast",
-    desc: "real-time 48h weather → ml demand prediction → cascade probability",
-    badge: "LIVE",
-    badgeColor: "text-[#3b82f6]/70",
-    icon: "🔵",
-  },
 ];
 
 /* Texas zip code → ERCOT weather zone (approximate) */
@@ -147,7 +139,7 @@ export default function OperatorEntryModal({ isOpen, onSubmit }: OperatorEntryMo
                 <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
               </div>
               <span className="text-[11px] font-mono text-white/30 ml-2">
-                operator@blackout
+                operator@void
               </span>
             </div>
 

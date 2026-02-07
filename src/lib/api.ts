@@ -52,6 +52,19 @@ export async function fetchOverview(scenario: string): Promise<OverviewData> {
 }
 
 /* ================================================================== */
+/*  WEATHER EVENTS (LLM-generated)                                     */
+/* ================================================================== */
+export interface WeatherEvent {
+  zone: string;
+  name: string;
+}
+
+export async function fetchWeatherEvents(scenario: string): Promise<WeatherEvent[]> {
+  const res = await get<{ data: WeatherEvent[] }>(`/utility/weather-events?scenario=${scenario}`);
+  return res.data;
+}
+
+/* ================================================================== */
 /*  HOTSPOTS                                                           */
 /* ================================================================== */
 export interface Hotspot {
@@ -159,13 +172,25 @@ export interface GridNodeData {
   capacity_mw: number;
   voltage_kv: number;
   weather_zone: string;
+  source?: "activsg" | "travis";
 }
 
-export async function fetchGridNodes(): Promise<GridNodeData[]> {
+export interface GridEdgeData {
+  fromLat: number;
+  fromLon: number;
+  toLat: number;
+  toLon: number;
+  source: "activsg" | "travis";
+  capacity_mva: number;
+}
+
+export async function fetchGridNodes(): Promise<{ nodes: GridNodeData[]; edges: GridEdgeData[] }> {
   const res = await fetch("/api/grid-nodes");
   if (!res.ok) throw new Error(`Grid nodes ${res.status}`);
   const json = await res.json();
-  return json.data;
+  const nodes = Array.isArray(json.data) ? json.data : [];
+  const edges = Array.isArray(json.edges) ? json.edges : [];
+  return { nodes, edges };
 }
 
 /* ================================================================== */
