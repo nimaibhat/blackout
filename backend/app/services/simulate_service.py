@@ -51,9 +51,14 @@ async def run_cascade_simulation(
     # Get weather data for cold-weather failure simulation (Uri scenario)
     # This enables realistic infrastructure failures during extreme cold events
     weather_by_zone = None
-    if resolved_scenario in ("uri", "uri_2021"):
-        logger.info(f"Fetching weather data for {resolved_scenario} scenario to simulate cold-weather failures")
-        overview = overview_service.get_overview(resolved_scenario)
+    if resolved_scenario in ("uri", "uri_2021") or resolved_scenario.startswith("uri"):
+        # Normalize scenario name for overview service (only understands "uri")
+        overview_scenario = "uri"
+        logger.info(
+            f"Fetching weather data for {resolved_scenario} scenario "
+            f"(using '{overview_scenario}' for overview) to simulate cold-weather failures"
+        )
+        overview = overview_service.get_overview(overview_scenario)
         weather_by_zone = {
             r.name: {
                 "temp_f": r.weather.temp_f,
@@ -62,7 +67,7 @@ async def run_cascade_simulation(
             }
             for r in overview.regions
         }
-        logger.info(f"Weather data loaded for {len(weather_by_zone)} zones")
+        logger.info(f"Weather data loaded for {len(weather_by_zone)} zones from '{overview_scenario}' overview")
 
     # Run the cascade simulation on a deep copy of the grid
     result = run_cascade(
